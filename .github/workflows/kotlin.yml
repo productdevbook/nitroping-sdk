@@ -1,0 +1,36 @@
+name: kotlin
+on:
+  push:
+    paths:
+      - 'kotlin/**'
+      - '.github/workflows/kotlin.yml'
+  pull_request:
+    paths:
+      - 'kotlin/**'
+      - '.github/workflows/kotlin.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kotlin
+    env:
+      # Skip the :nitroping-android module on the CI runner — that job
+      # needs an Android SDK install. Adding it can be a follow-up.
+      NITROPING_SKIP_ANDROID: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :nitroping:test --no-daemon --stacktrace
+      - name: Upload test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kotlin-test-report
+          path: kotlin/nitroping/build/reports/tests/test
+          retention-days: 14
