@@ -1,3 +1,6 @@
+> This package is part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo.
+> The Swift Package URL is now `https://github.com/productdevbook/nitroping-sdk` (was: `nitroping-swift`). See the [top-level README](../README.md) for SDKs in other languages.
+
 # nitroping-swift
 
 Zero-dependency Swift SDK for [nitroping](https://nitroping.dev) — register devices, parse incoming pushes (deep links + action buttons), verify webhooks.
@@ -18,7 +21,7 @@ Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/productdevbook/nitroping-swift", from: "0.1.0")
+    .package(url: "https://github.com/productdevbook/nitroping-sdk", from: "0.1.0")
 ]
 ```
 
@@ -28,12 +31,12 @@ dependencies: [
 .target(
     name: "MyApp",
     dependencies: [
-        .product(name: "Nitroping", package: "nitroping-swift")
+        .product(name: "Nitroping", package: "nitroping-sdk")
     ]
 )
 ```
 
-In Xcode, use **File → Add Package Dependencies…** and paste `https://github.com/productdevbook/nitroping-swift`.
+In Xcode, use **File → Add Package Dependencies…** and paste `https://github.com/productdevbook/nitroping-sdk`.
 
 ## Quickstart
 

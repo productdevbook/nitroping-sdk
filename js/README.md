@@ -1,3 +1,6 @@
+> This package is part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo.
+> The npm package name (`nitroping`) is unchanged. See the [top-level README](../README.md) for SDKs in other languages.
+
 <p align="center">
   <br>
   <b style="font-size: 2em;">nitroping-js</b>

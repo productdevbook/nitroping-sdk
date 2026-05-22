@@ -1,0 +1,47 @@
+.DS_Store
+
+# Node
+node_modules
+dist
+*.tsbuildinfo
+.pnpm-debug.log
+
+# Swift
+.build
+.swiftpm
+Package.resolved
+*.xcodeproj
+DerivedData/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Go
+vendor/
+*.exe
+*.test
+*.out
+
+# Kotlin / Gradle
+.gradle/
+build/
+*.iml
+local.properties
+
+# PHP / Composer
+vendor/
+composer.lock
+
+# IDEs
+.idea/
+.vscode/
+
+# Logs
+*.log

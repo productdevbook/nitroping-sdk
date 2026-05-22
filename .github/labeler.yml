@@ -1,0 +1,24 @@
+"sdk:js":
+  - changed-files:
+    - any-glob-to-any-file: ['js/**']
+"sdk:swift":
+  - changed-files:
+    - any-glob-to-any-file: ['swift/**', 'Package.swift']
+"sdk:python":
+  - changed-files:
+    - any-glob-to-any-file: ['python/**']
+"sdk:go":
+  - changed-files:
+    - any-glob-to-any-file: ['go/**']
+"sdk:kotlin":
+  - changed-files:
+    - any-glob-to-any-file: ['kotlin/**']
+"sdk:php":
+  - changed-files:
+    - any-glob-to-any-file: ['php/**']
+"area:ci":
+  - changed-files:
+    - any-glob-to-any-file: ['.github/**']
+"area:docs":
+  - changed-files:
+    - any-glob-to-any-file: ['README.md', '**/*.md']

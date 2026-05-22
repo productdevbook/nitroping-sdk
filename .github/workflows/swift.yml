@@ -1,0 +1,13 @@
+name: swift
+on:
+  push:
+    paths: ['swift/**', 'Package.swift', '.github/workflows/swift.yml']
+  pull_request:
+    paths: ['swift/**', 'Package.swift', '.github/workflows/swift.yml']
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift build
+      - run: swift test
