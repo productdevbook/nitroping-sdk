@@ -1,0 +1,69 @@
+{
+  "name": "nitroping",
+  "version": "0.1.0",
+  "description": "Zero-dependency TypeScript SDK for nitroping push notifications. Send pushes, register devices, verify webhooks. Works in Node, Bun, Deno, Cloudflare Workers, browsers.",
+  "keywords": [
+    "apns",
+    "esm",
+    "fcm",
+    "notifications",
+    "push",
+    "sdk",
+    "tree-shakeable",
+    "typescript",
+    "web-push",
+    "zero-dependency"
+  ],
+  "homepage": "https://github.com/productdevbook/nitroping-js",
+  "bugs": {
+    "url": "https://github.com/productdevbook/nitroping-js/issues"
+  },
+  "license": "MIT",
+  "author": "productdevbook",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/productdevbook/nitroping-js.git"
+  },
+  "funding": "https://github.com/sponsors/productdevbook",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./web": {
+      "types": "./dist/web.d.mts",
+      "default": "./dist/web.mjs"
+    },
+    "./webhooks": {
+      "types": "./dist/webhooks.d.mts",
+      "default": "./dist/webhooks.mjs"
+    }
+  },
+  "scripts": {
+    "build": "obuild",
+    "dev": "vitest",
+    "lint": "oxlint . && oxfmt --check .",
+    "lint:fix": "oxlint . --fix && oxfmt .",
+    "fmt": "oxfmt .",
+    "test": "pnpm lint && pnpm typecheck && vitest run",
+    "typecheck": "tsgo --noEmit",
+    "release": "pnpm test && pnpm build && bumpp --commit --tag --push --all",
+    "prepack": "pnpm build"
+  },
+  "devDependencies": {
+    "@typescript/native-preview": "7.0.0-dev.20260316.1",
+    "@vitest/coverage-v8": "^4.1.1",
+    "bumpp": "^11.0.1",
+    "obuild": "^0.4.32",
+    "oxfmt": "^0.42.0",
+    "oxlint": "^1.57.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.1"
+  }
+}
