@@ -1,0 +1,268 @@
+package nitroping_test
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	nitroping "github.com/productdevbook/nitroping-sdk/go"
+)
+
+// newTestClient stands up an httptest.NewServer that runs `handler`,
+// then constructs a Client pointed at it. The cleanup func closes the
+// server.
+func newTestClient(t *testing.T, handler http.HandlerFunc) *nitroping.Client {
+	t.Helper()
+	srv := httptest.NewServer(handler)
+	t.Cleanup(srv.Close)
+
+	client, err := nitroping.NewClient(nitroping.ClientOptions{
+		APIKey:  "np_test_secret",
+		BaseURL: srv.URL,
+	})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	return client
+}
+
+func TestNotificationsSend_MethodPathHeadersBody(t *testing.T) {
+	var captured struct {
+		method string
+		path   string
+		auth   string
+		accept string
+		ctype  string
+		ua     string
+		body   map[string]any
+	}
+
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		captured.method = r.Method
+		captured.path = r.URL.Path
+		captured.auth = r.Header.Get("Authorization")
+		captured.accept = r.Header.Get("Accept")
+		captured.ctype = r.Header.Get("Content-Type")
+		captured.ua = r.Header.Get("User-Agent")
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured.body)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"abc-123","status":"queued"}`))
+	})
+
+	result, err := client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		Title:    "Order #4129 shipped",
+		Body:     "On its way",
+		DeepLink: nitroping.String("https://example.com/orders/4129"),
+		Actions:  []nitroping.Action{{ID: "track", Title: "Track"}},
+		Target:   nitroping.AllDevices(),
+	})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if result.ID != "abc-123" || result.Status != "queued" {
+		t.Errorf("got %+v, want {abc-123 queued}", result)
+	}
+	if captured.method != "POST" {
+		t.Errorf("method = %q, want POST", captured.method)
+	}
+	if captured.path != "/api/v1/notifications" {
+		t.Errorf("path = %q, want /api/v1/notifications", captured.path)
+	}
+	if captured.auth != "ApiKey np_test_secret" {
+		t.Errorf("Authorization = %q", captured.auth)
+	}
+	if captured.accept != "application/json" {
+		t.Errorf("Accept = %q", captured.accept)
+	}
+	if captured.ctype != "application/json" {
+		t.Errorf("Content-Type = %q", captured.ctype)
+	}
+	if captured.ua == "" {
+		t.Errorf("User-Agent unexpectedly empty")
+	}
+
+	// Wire-format checks: snake_case keys, deep_link present, target
+	// serialised as {all:true}.
+	if captured.body["title"] != "Order #4129 shipped" {
+		t.Errorf("body.title = %v", captured.body["title"])
+	}
+	if captured.body["body"] != "On its way" {
+		t.Errorf("body.body = %v", captured.body["body"])
+	}
+	if captured.body["deep_link"] != "https://example.com/orders/4129" {
+		t.Errorf("body.deep_link = %v", captured.body["deep_link"])
+	}
+	target, _ := captured.body["target"].(map[string]any)
+	if target == nil || target["all"] != true {
+		t.Errorf("body.target = %v, want {all:true}", captured.body["target"])
+	}
+	actions, _ := captured.body["actions"].([]any)
+	if len(actions) != 1 {
+		t.Fatalf("body.actions len = %d, want 1", len(actions))
+	}
+	action0, _ := actions[0].(map[string]any)
+	if action0["id"] != "track" || action0["title"] != "Track" {
+		t.Errorf("body.actions[0] = %v", action0)
+	}
+	// `clickAction` was never set — the JSON encoder must omit it,
+	// so the wire body must NOT contain a click_action key.
+	if _, ok := captured.body["click_action"]; ok {
+		t.Errorf("body should not include click_action when DeepLink-only")
+	}
+}
+
+func TestNotificationsSend_IdempotencyKeyForwarded(t *testing.T) {
+	var captured struct {
+		idem string
+		body map[string]any
+	}
+
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		captured.idem = r.Header.Get("Idempotency-Key")
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured.body)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"n1","status":"queued"}`))
+	})
+
+	_, err := client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		Title:  "Hi",
+		Body:   "There",
+		Target: nitroping.UserIDs([]string{"u1"}),
+	}, nitroping.WithIdempotencyKey("order-shipped-4129"))
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if captured.idem != "order-shipped-4129" {
+		t.Errorf("Idempotency-Key = %q", captured.idem)
+	}
+	// UserIDs target must serialise as user_ids.
+	target, _ := captured.body["target"].(map[string]any)
+	uids, _ := target["user_ids"].([]any)
+	if len(uids) != 1 || uids[0] != "u1" {
+		t.Errorf("body.target.user_ids = %v", target["user_ids"])
+	}
+}
+
+func TestNotificationsSend_DeviceIDsTarget(t *testing.T) {
+	var captured map[string]any
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"n1","status":"queued"}`))
+	})
+
+	_, err := client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		Title:  "x",
+		Body:   "y",
+		Target: nitroping.DeviceIDs([]string{"d1", "d2"}),
+	})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	target, _ := captured["target"].(map[string]any)
+	ids, _ := target["device_ids"].([]any)
+	if len(ids) != 2 || ids[0] != "d1" || ids[1] != "d2" {
+		t.Errorf("body.target = %v", captured["target"])
+	}
+}
+
+func TestNotificationsSend_422APIError(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte(`{
+            "error": {
+              "code": "validation_failed",
+              "message": "Request body failed validation",
+              "details": {"title": ["can't be blank"]}
+            }
+          }`))
+	})
+
+	_, err := client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		// Intentionally invalid: no title, blank body, target empty.
+		Body:   "",
+		Target: nitroping.AllDevices(),
+	})
+	if err == nil {
+		t.Fatal("expected APIError, got nil")
+	}
+	var apiErr *nitroping.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *APIError, got %T: %v", err, err)
+	}
+	if apiErr.StatusCode != 422 {
+		t.Errorf("StatusCode = %d, want 422", apiErr.StatusCode)
+	}
+	if apiErr.Code != "validation_failed" {
+		t.Errorf("Code = %q", apiErr.Code)
+	}
+	if apiErr.Message != "Request body failed validation" {
+		t.Errorf("Message = %q", apiErr.Message)
+	}
+	titleErr, _ := apiErr.Details["title"].([]any)
+	if len(titleErr) != 1 || titleErr[0] != "can't be blank" {
+		t.Errorf("Details.title = %v", apiErr.Details["title"])
+	}
+}
+
+func TestNotificationsSend_NetworkErrorWrapped(t *testing.T) {
+	// Point the client at a closed server — Send must return a
+	// non-APIError that wraps the underlying *url.Error.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	srv.Close() // close immediately; subsequent requests fail.
+
+	client, err := nitroping.NewClient(nitroping.ClientOptions{
+		APIKey:  "np_x",
+		BaseURL: srv.URL,
+	})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	_, err = client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		Title:  "x",
+		Body:   "y",
+		Target: nitroping.AllDevices(),
+	})
+	if err == nil {
+		t.Fatal("expected network error")
+	}
+	var apiErr *nitroping.APIError
+	if errors.As(err, &apiErr) {
+		t.Errorf("network error should not be an *APIError, got %v", apiErr)
+	}
+}
+
+func TestNotificationsSend_ContextCancelled(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		// never write — request will be cancelled by the client.
+		<-r.Context().Done()
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately
+
+	_, err := client.Notifications.Send(ctx, nitroping.SendRequest{
+		Title:  "x",
+		Body:   "y",
+		Target: nitroping.AllDevices(),
+	})
+	if err == nil {
+		t.Fatal("expected error from cancelled context")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("error should wrap context.Canceled, got %v", err)
+	}
+}
