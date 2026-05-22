@@ -1,0 +1,79 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nitroping"
+version = "0.1.0"
+description = "Zero-dependency Python SDK for nitroping push notifications. Send pushes, register devices, verify webhooks."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "productdevbook" }]
+requires-python = ">=3.10"
+keywords = ["push", "notifications", "apns", "fcm", "web-push", "sdk", "nitroping"]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://nitroping.dev"
+Repository = "https://github.com/productdevbook/nitroping-sdk"
+Issues = "https://github.com/productdevbook/nitroping-sdk/issues"
+Documentation = "https://nitroping.dev/docs"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.23",
+  "mypy>=1.10",
+  "ruff>=0.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nitroping"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/nitroping",
+  "tests",
+  "README.md",
+  "pyproject.toml",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+  # `vars` shadows builtin but matches the JS SDK + Phoenix server.
+  "A002",
+  # NotRequired in TypedDict triggers UP needlessly under py310.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.mypy]
+strict = true
+python_version = "3.10"
+files = ["src", "tests"]
+warn_unused_ignores = true
+disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
