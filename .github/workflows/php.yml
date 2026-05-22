@@ -1,0 +1,26 @@
+name: php
+on:
+  push:
+    paths: ['php/**', '.github/workflows/php.yml']
+  pull_request:
+    paths: ['php/**', '.github/workflows/php.yml']
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.2', '8.3', '8.4']
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: php
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: curl, json, hash
+          coverage: none
+      - run: composer install --prefer-dist --no-interaction
+      - run: composer analyse
+      - run: composer test
