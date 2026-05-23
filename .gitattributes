@@ -1,0 +1,24 @@
+# Files Packagist (and any consumer) should not see in the dist archive.
+# Composer fetches via `git archive`, which strips `export-ignore` entries.
+
+# Other-language SDKs (not relevant for PHP users)
+js/                  export-ignore
+swift/               export-ignore
+python/              export-ignore
+go/                  export-ignore
+kotlin/              export-ignore
+
+# Root files for the broader monorepo experience, not for downstream PHP users.
+# Patterns without a path separator match in any directory, so anchor with `/`
+# (gitattributes treats a leading `/` as repo-root, like .gitignore).
+/README.md           export-ignore
+/CHANGELOG.md        export-ignore
+/VERSION             export-ignore
+/bump.sh             export-ignore
+/Package.swift       export-ignore
+
+# CI + meta — not part of the PHP package
+/.github/            export-ignore
+/.editorconfig       export-ignore
+/.gitattributes      export-ignore
+/.gitignore          export-ignore

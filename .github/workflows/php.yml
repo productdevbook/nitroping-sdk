@@ -1,9 +1,9 @@
 name: php
 on:
   push:
-    paths: ['php/**', '.github/workflows/php.yml']
+    paths: ['php/**', 'composer.json', '.gitattributes', '.github/workflows/php.yml']
   pull_request:
-    paths: ['php/**', '.github/workflows/php.yml']
+    paths: ['php/**', 'composer.json', '.gitattributes', '.github/workflows/php.yml']
 jobs:
   test:
     strategy:
@@ -11,9 +11,6 @@ jobs:
       matrix:
         php-version: ['8.2', '8.3', '8.4']
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: php
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
