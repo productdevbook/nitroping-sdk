@@ -8,6 +8,10 @@
  * usable on Android via AGP's core library desugaring. Apps targeting
  * older devices can still consume the core directly through a tiny
  * façade — opening that path is left for a follow-up if anyone asks.
+ *
+ * Maven Central publishing for this Android module is deferred — set up
+ * once Android SDK is configured in CI. Core JVM module (sibling `:nitroping`)
+ * is the public Maven artifact today.
  */
 
 plugins {
