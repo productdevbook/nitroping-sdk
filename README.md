@@ -44,6 +44,17 @@ The push fires `.github/workflows/release.yml`:
 
 The `bump.sh` script also tags `go/v<X.Y.Z>` (Go modules subdir convention) so `go get github.com/productdevbook/nitroping-sdk/go@v<X.Y.Z>` resolves.
 
+### Packagist (PHP)
+
+Packagist needs `composer.json` at repo root, which doesn't match our `php/` subdirectory layout. We auto-mirror the `php/` subtree to [`productdevbook/nitroping-sdk-php`](https://github.com/productdevbook/nitroping-sdk-php) on every tag push (see `.github/workflows/packagist-mirror.yml`).
+
+To register on Packagist:
+1. Go to <https://packagist.org/packages/submit>
+2. Repository URL: `https://github.com/productdevbook/nitroping-sdk-php`
+3. After submission, the GitHub → Packagist webhook auto-publishes on every future tag push.
+
+Do **not** submit `productdevbook/nitroping-sdk` to Packagist — it has no root `composer.json`.
+
 ## Versioning policy
 
 Lockstep — one source-of-truth `VERSION` file at the repo root drives every SDK manifest. Even when only one SDK has functional changes, all SDKs get the same bump. Trade-off accepted: keeps the cross-language story simple ("are you on 0.2? then features X, Y, Z are available everywhere") at the cost of occasional no-op republishes.
