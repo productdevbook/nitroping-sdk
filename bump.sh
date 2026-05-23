@@ -87,10 +87,31 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
     exit 0
 fi
 
+# Re-format edited files so oxfmt / ruff / php-cs-fixer don't reject them
+# at release time. Run only the formatters that are cheap to invoke locally
+# (no network, no Docker). Each formatter is best-effort — skip silently if
+# the binary isn't available, since the release CI will still verify format
+# from scratch.
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    if [[ -x js/node_modules/.bin/oxfmt ]]; then
+        (cd js && ./node_modules/.bin/oxfmt package.json) || true
+    elif command -v pnpm >/dev/null 2>&1; then
+        (cd js && pnpm install --frozen-lockfile --silent && ./node_modules/.bin/oxfmt package.json) || true
+    fi
+    # ruff / black for python — only if installed locally
+    if command -v ruff >/dev/null 2>&1; then
+        ruff format python/pyproject.toml || true
+    fi
+    # php-cs-fixer for composer.json — only if installed locally
+    if command -v php-cs-fixer >/dev/null 2>&1; then
+        (cd php && composer.json php-cs-fixer fix composer.json) || true
+    fi
+fi
+
 # Commit + tag
-git add VERSION js/package.json python/pyproject.toml kotlin/gradle.properties
+git add -u VERSION js/package.json python/pyproject.toml kotlin/gradle.properties
 if grep -q "\"version\"" php/composer.json 2>/dev/null; then
-    git add php/composer.json
+    git add -u php/composer.json
 fi
 git commit -m "v$NEW"
 git tag -a "v$NEW" -m "v$NEW"
