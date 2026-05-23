@@ -14,15 +14,16 @@
     "web-push",
     "zero-dependency"
   ],
-  "homepage": "https://github.com/productdevbook/nitroping-js",
+  "homepage": "https://github.com/productdevbook/nitroping-sdk/tree/main/js",
   "bugs": {
-    "url": "https://github.com/productdevbook/nitroping-js/issues"
+    "url": "https://github.com/productdevbook/nitroping-sdk/issues"
   },
   "license": "MIT",
   "author": "productdevbook",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/productdevbook/nitroping-js.git"
+    "url": "git+https://github.com/productdevbook/nitroping-sdk.git",
+    "directory": "js"
   },
   "funding": "https://github.com/sponsors/productdevbook",
   "files": [
