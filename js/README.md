@@ -1,20 +1,14 @@
-> This package is part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo.
-> The npm package name (`nitroping`) is unchanged. See the [top-level README](../README.md) for SDKs in other languages.
+# nitroping (JavaScript / TypeScript SDK)
 
-<p align="center">
-  <br>
-  <b style="font-size: 2em;">nitroping-js</b>
-  <br><br>
-  Zero-dependency TypeScript SDK for <a href="https://nitroping.dev">nitroping</a>.
-  <br>
-  Send push notifications, register devices, verify webhooks. Pure ESM, works in Node, Bun, Deno, Cloudflare Workers, and browsers.
-  <br><br>
-  <a href="https://npmjs.com/package/nitroping"><img src="https://img.shields.io/npm/v/nitroping?style=flat&colorA=18181B&colorB=34d399" alt="npm version"></a>
-  <a href="https://npmjs.com/package/nitroping"><img src="https://img.shields.io/npm/dm/nitroping?style=flat&colorA=18181B&colorB=34d399" alt="npm downloads"></a>
-  <a href="https://bundlephobia.com/result?p=nitroping"><img src="https://img.shields.io/bundlephobia/minzip/nitroping?style=flat&colorA=18181B&colorB=34d399" alt="bundle size"></a>
-  <a href="https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/productdevbook/nitroping-sdk?style=flat&colorA=18181B&colorB=34d399" alt="license"></a>
-  <a href="https://github.com/productdevbook/nitroping-sdk/stargazers"><img src="https://img.shields.io/github/stars/productdevbook/nitroping-sdk?style=flat&colorA=18181B&colorB=34d399" alt="GitHub stars"></a>
-</p>
+[![npm version](https://img.shields.io/npm/v/nitroping?logo=npm&color=cb3837)](https://www.npmjs.com/package/nitroping)
+[![npm downloads](https://img.shields.io/npm/dm/nitroping?logo=npm)](https://www.npmjs.com/package/nitroping)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/nitroping?logo=javascript)](https://bundlephobia.com/package/nitroping)
+[![license MIT](https://img.shields.io/npm/l/nitroping)](https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE)
+[![types](https://img.shields.io/npm/types/nitroping?logo=typescript)](https://github.com/productdevbook/nitroping-sdk/tree/main/js)
+
+> Zero-dependency TypeScript SDK for [nitroping](https://nitroping.dev) push notifications. Send pushes, register devices, verify webhooks. Pure ESM — Node, Bun, Deno, Cloudflare Workers, browsers.
+
+> 📦 Part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo. The npm package name (`nitroping`) is unchanged. See the [root README](https://github.com/productdevbook/nitroping-sdk#readme) for SDKs in other languages.
 
 ## Why nitroping?
 
@@ -422,12 +416,12 @@ key instead.
 
 ## License
 
-[MIT](./LICENSE) — Copyright (c) 2026 productdevbook.
+MIT — see [LICENSE](https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE). Copyright (c) 2026 productdevbook.
 
 ---
 
 <p align="center">
   <sub>
-    Built by <a href="https://github.com/productdevbook">@productdevbook</a> — <a href="https://nitroping.dev">nitroping.dev</a> · <a href="https://github.com/productdevbook/nitroping">OSS core</a>
+    Built by <a href="https://github.com/productdevbook">@productdevbook</a> — <a href="https://nitroping.dev">nitroping.dev</a> · <a href="https://github.com/productdevbook/nitroping-sdk#readme">monorepo</a> · <a href="https://github.com/productdevbook/nitroping">OSS core</a>
   </sub>
 </p>

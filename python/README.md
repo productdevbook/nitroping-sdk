@@ -1,19 +1,14 @@
-> Part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo.
-> The PyPI package name (`nitroping`) is unchanged. See the [top-level README](../README.md) for SDKs in other languages.
+# nitroping (Python SDK)
 
-<p align="center">
-  <br>
-  <b style="font-size: 2em;">nitroping-python</b>
-  <br><br>
-  Zero-dependency Python SDK for <a href="https://nitroping.dev">nitroping</a>.
-  <br>
-  Send push notifications, register devices, verify webhooks. Pure stdlib, runs on Python 3.10+.
-  <br><br>
-  <a href="https://pypi.org/project/nitroping/"><img src="https://img.shields.io/pypi/v/nitroping?style=flat&colorA=18181B&colorB=34d399" alt="PyPI version"></a>
-  <a href="https://pypi.org/project/nitroping/"><img src="https://img.shields.io/pypi/pyversions/nitroping?style=flat&colorA=18181B&colorB=34d399" alt="Python versions"></a>
-  <a href="https://pypi.org/project/nitroping/"><img src="https://img.shields.io/pypi/dm/nitroping?style=flat&colorA=18181B&colorB=34d399" alt="PyPI downloads"></a>
-  <a href="https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/productdevbook/nitroping-sdk?style=flat&colorA=18181B&colorB=34d399" alt="license"></a>
-</p>
+[![PyPI version](https://img.shields.io/pypi/v/nitroping?logo=pypi&color=3775a9)](https://pypi.org/project/nitroping/)
+[![Python versions](https://img.shields.io/pypi/pyversions/nitroping?logo=python)](https://pypi.org/project/nitroping/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/nitroping?logo=pypi)](https://pypi.org/project/nitroping/)
+[![license MIT](https://img.shields.io/pypi/l/nitroping)](https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE)
+[![types](https://img.shields.io/pypi/types/nitroping?label=typed&logo=python)](https://pypi.org/project/nitroping/)
+
+> Zero-dependency Python SDK for [nitroping](https://nitroping.dev) push notifications. Send pushes, register devices, verify webhooks. Pure stdlib, runs on Python 3.10+.
+
+> 📦 Part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo. The PyPI package name (`nitroping`) is unchanged. See the [root README](https://github.com/productdevbook/nitroping-sdk#readme) for SDKs in other languages.
 
 ## Why nitroping?
 
@@ -389,12 +384,12 @@ from nitroping import NotificationResult, RegisterDeviceResult, WebhookEvent
 
 ## License
 
-[MIT](../LICENSE) — Copyright (c) 2026 productdevbook.
+MIT — see [LICENSE](https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE). Copyright (c) 2026 productdevbook.
 
 ---
 
 <p align="center">
   <sub>
-    Built by <a href="https://github.com/productdevbook">@productdevbook</a> — <a href="https://nitroping.dev">nitroping.dev</a> · <a href="https://github.com/productdevbook/nitroping">OSS core</a>
+    Built by <a href="https://github.com/productdevbook">@productdevbook</a> — <a href="https://nitroping.dev">nitroping.dev</a> · <a href="https://github.com/productdevbook/nitroping-sdk#readme">monorepo</a> · <a href="https://github.com/productdevbook/nitroping">OSS core</a>
   </sub>
 </p>

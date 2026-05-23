@@ -1,20 +1,13 @@
-# nitroping-go
+# nitroping (Go SDK)
 
-> This package is part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo.
-> See the [top-level README](../README.md) for SDKs in other languages.
+[![Go reference](https://pkg.go.dev/badge/github.com/productdevbook/nitroping-sdk/go.svg)](https://pkg.go.dev/github.com/productdevbook/nitroping-sdk/go)
+[![Go report card](https://goreportcard.com/badge/github.com/productdevbook/nitroping-sdk/go)](https://goreportcard.com/report/github.com/productdevbook/nitroping-sdk/go)
+[![Go version](https://img.shields.io/github/go-mod/go-version/productdevbook/nitroping-sdk?filename=go/go.mod&logo=go)](https://github.com/productdevbook/nitroping-sdk/blob/main/go/go.mod)
+[![license MIT](https://img.shields.io/github/license/productdevbook/nitroping-sdk)](https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE)
 
-<p align="center">
-  <br>
-  <b style="font-size: 2em;">nitroping-go</b>
-  <br><br>
-  Zero-dependency Go SDK for <a href="https://nitroping.dev">nitroping</a>.
-  <br>
-  Send push notifications, register devices, verify webhooks. Stdlib only.
-  <br><br>
-  <a href="https://pkg.go.dev/github.com/productdevbook/nitroping-sdk/go"><img src="https://pkg.go.dev/badge/github.com/productdevbook/nitroping-sdk/go.svg" alt="Go reference"></a>
-  <a href="https://goreportcard.com/report/github.com/productdevbook/nitroping-sdk/go"><img src="https://goreportcard.com/badge/github.com/productdevbook/nitroping-sdk/go" alt="Go report card"></a>
-  <a href="https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/productdevbook/nitroping-sdk?style=flat&colorA=18181B&colorB=34d399" alt="license"></a>
-</p>
+> Zero-dependency Go SDK for [nitroping](https://nitroping.dev) push notifications. Send pushes, register devices, verify webhooks. Stdlib only — `net/http`, `encoding/json`, `crypto/hmac`.
+
+> 📦 Part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo. See the [root README](https://github.com/productdevbook/nitroping-sdk#readme) for SDKs in other languages.
 
 ## Why nitroping?
 
@@ -359,12 +352,12 @@ if err != nil {
 
 ## License
 
-[MIT](../LICENSE) — Copyright (c) 2026 productdevbook.
+MIT — see [LICENSE](https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE). Copyright (c) 2026 productdevbook.
 
 ---
 
 <p align="center">
   <sub>
-    Built by <a href="https://github.com/productdevbook">@productdevbook</a> — <a href="https://nitroping.dev">nitroping.dev</a> · <a href="https://github.com/productdevbook/nitroping">OSS core</a>
+    Built by <a href="https://github.com/productdevbook">@productdevbook</a> — <a href="https://nitroping.dev">nitroping.dev</a> · <a href="https://github.com/productdevbook/nitroping-sdk#readme">monorepo</a> · <a href="https://github.com/productdevbook/nitroping">OSS core</a>
   </sub>
 </p>

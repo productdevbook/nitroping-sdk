@@ -1,20 +1,13 @@
-> This package is part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo.
-> See the [top-level README](../README.md) for SDKs in other languages.
+# nitroping (Kotlin SDK)
 
-<p align="center">
-  <br>
-  <b style="font-size: 2em;">nitroping-kotlin</b>
-  <br><br>
-  Zero-dependency Kotlin SDK for <a href="https://nitroping.dev">nitroping</a>.
-  <br>
-  Send push notifications, register devices, verify webhooks. Pure JVM core
-  for Ktor / Spring / your favorite backend, plus an Android sugar module
-  for FCM payload parsing.
-  <br><br>
-  <a href="https://central.sonatype.com/artifact/dev.nitroping/nitroping"><img src="https://img.shields.io/maven-central/v/dev.nitroping/nitroping?style=flat&colorA=18181B&colorB=34d399" alt="Maven Central"></a>
-  <a href="https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/productdevbook/nitroping-sdk?style=flat&colorA=18181B&colorB=34d399" alt="license"></a>
-  <a href="https://github.com/productdevbook/nitroping-sdk/stargazers"><img src="https://img.shields.io/github/stars/productdevbook/nitroping-sdk?style=flat&colorA=18181B&colorB=34d399" alt="GitHub stars"></a>
-</p>
+[![Maven Central](https://img.shields.io/maven-central/v/dev.nitroping/nitroping?logo=apachemaven&label=Maven%20Central&color=blue)](https://central.sonatype.com/artifact/dev.nitroping/nitroping)
+[![Kotlin version](https://img.shields.io/badge/kotlin-2.0%2B-7F52FF?logo=kotlin)](https://kotlinlang.org)
+[![Java version](https://img.shields.io/badge/java-17%2B-007396?logo=openjdk)](https://openjdk.org)
+[![license MIT](https://img.shields.io/github/license/productdevbook/nitroping-sdk)](https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE)
+
+> Zero-dependency Kotlin SDK for [nitroping](https://nitroping.dev) push notifications. Send pushes, register devices, verify webhooks. Pure JVM core for Ktor / Spring / your favorite backend, plus an Android sugar module for FCM payload parsing.
+
+> 📦 Part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo. See the [root README](https://github.com/productdevbook/nitroping-sdk#readme) for SDKs in other languages.
 
 ## Why nitroping?
 
@@ -437,12 +430,12 @@ works.
 
 ## License
 
-[MIT](../LICENSE) — Copyright (c) 2026 productdevbook.
+MIT — see [LICENSE](https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE). Copyright (c) 2026 productdevbook.
 
 ---
 
 <p align="center">
   <sub>
-    Built by <a href="https://github.com/productdevbook">@productdevbook</a> — <a href="https://nitroping.dev">nitroping.dev</a> · <a href="https://github.com/productdevbook/nitroping">OSS core</a>
+    Built by <a href="https://github.com/productdevbook">@productdevbook</a> — <a href="https://nitroping.dev">nitroping.dev</a> · <a href="https://github.com/productdevbook/nitroping-sdk#readme">monorepo</a> · <a href="https://github.com/productdevbook/nitroping">OSS core</a>
   </sub>
 </p>

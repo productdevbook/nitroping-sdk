@@ -1,19 +1,28 @@
-> This package is part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo.
-> The Swift Package URL is now `https://github.com/productdevbook/nitroping-sdk` (was: `nitroping-swift`). See the [top-level README](../README.md) for SDKs in other languages.
+# nitroping (Swift SDK)
 
-# nitroping-swift
+[![Swift versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fproductdevbook%2Fnitroping-sdk%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/productdevbook/nitroping-sdk)
+[![Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fproductdevbook%2Fnitroping-sdk%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/productdevbook/nitroping-sdk)
+[![license MIT](https://img.shields.io/github/license/productdevbook/nitroping-sdk)](https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE)
 
-Zero-dependency Swift SDK for [nitroping](https://nitroping.dev) — register devices, parse incoming pushes (deep links + action buttons), verify webhooks.
+> Zero-dependency Swift SDK for [nitroping](https://nitroping.dev) push notifications. Register devices, parse incoming pushes (deep links + action buttons), verify webhooks. Uses only `Foundation`, `CryptoKit`, `UserNotifications`, `URLSession`, and `os.log` — no third-party Swift Package dependencies.
 
-[![Swift 6](https://img.shields.io/badge/swift-6.0-orange.svg)](https://swift.org)
-[![iOS 16+](https://img.shields.io/badge/iOS-16%2B-blue.svg)](https://developer.apple.com/ios/)
-[![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue.svg)](https://developer.apple.com/macos/)
-[![watchOS 9+](https://img.shields.io/badge/watchOS-9%2B-blue.svg)](https://developer.apple.com/watchos/)
-[![tvOS 16+](https://img.shields.io/badge/tvOS-16%2B-blue.svg)](https://developer.apple.com/tvos/)
-[![visionOS 1+](https://img.shields.io/badge/visionOS-1%2B-blue.svg)](https://developer.apple.com/visionos/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+> 📦 Part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo. The Swift Package URL is `https://github.com/productdevbook/nitroping-sdk` (was: `nitroping-swift`). See the [root README](https://github.com/productdevbook/nitroping-sdk#readme) for SDKs in other languages.
 
-The SDK uses only `Foundation`, `CryptoKit`, `UserNotifications`, `URLSession`, and `os.log` — no third-party Swift Package dependencies.
+## Why nitroping?
+
+[nitroping](https://nitroping.dev) is a hosted push notification service that
+unifies APNs (iOS), FCM (Android), and Web Push behind one API. Send to a
+single device, a user across all of their devices, or every device in your
+app with one HTTP call. The service handles fanout, retries, idempotency,
+quota and outbound webhooks for delivery state — you write the product,
+not the plumbing.
+
+`nitroping` (Swift) is the official Apple-platform client. It runs on
+iOS 16+, macOS 13+, watchOS 9+, tvOS 16+, and visionOS 1+ with **no
+third-party Swift Package dependencies** — just `Foundation`,
+`CryptoKit`, `UserNotifications`, `URLSession`, and `os.log`. The same
+package is usable on server Swift (Linux/macOS) for webhook verification
+in Vapor / Hummingbird.
 
 ## Install
 
@@ -394,6 +403,26 @@ NitropingClient.configure(
 )
 ```
 
+## Runtime support
+
+| Platform          | Minimum |
+| ----------------- | ------- |
+| iOS               | 16.0    |
+| macOS             | 13.0    |
+| watchOS           | 9.0     |
+| tvOS              | 16.0    |
+| visionOS          | 1.0     |
+| Swift on Linux    | 6.0     |
+| Swift toolchain   | 6.0+    |
+
 ## License
 
-MIT — see [LICENSE](LICENSE). Copyright (c) 2026 productdevbook.
+MIT — see [LICENSE](https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE). Copyright (c) 2026 productdevbook.
+
+---
+
+<p align="center">
+  <sub>
+    Built by <a href="https://github.com/productdevbook">@productdevbook</a> — <a href="https://nitroping.dev">nitroping.dev</a> · <a href="https://github.com/productdevbook/nitroping-sdk#readme">monorepo</a> · <a href="https://github.com/productdevbook/nitroping">OSS core</a>
+  </sub>
+</p>
