@@ -1,3 +1,5 @@
+import com.vanniktech.maven.publish.SonatypeHost
+
 /*
  * Core module — pure JVM, zero Android deps.
  *
@@ -18,17 +20,12 @@
 plugins {
     kotlin("jvm")
     `java-library`
-    `maven-publish`
+    id("com.vanniktech.maven.publish")
 }
 
 kotlin {
     jvmToolchain(17)
     explicitApi()
-}
-
-java {
-    withSourcesJar()
-    withJavadocJar()
 }
 
 dependencies {
@@ -52,30 +49,38 @@ tasks.test {
     }
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-            pom {
-                name.set(providers.gradleProperty("POM_NAME"))
-                description.set(providers.gradleProperty("POM_DESCRIPTION"))
-                url.set(providers.gradleProperty("POM_URL"))
-                licenses {
-                    license {
-                        name.set(providers.gradleProperty("POM_LICENSE_NAME"))
-                        url.set(providers.gradleProperty("POM_LICENSE_URL"))
-                        distribution.set(providers.gradleProperty("POM_LICENSE_DIST"))
-                    }
-                }
-                developers {
-                    developer {
-                        id.set(providers.gradleProperty("POM_DEVELOPER_ID"))
-                        name.set(providers.gradleProperty("POM_DEVELOPER_NAME"))
-                        url.set(providers.gradleProperty("POM_DEVELOPER_URL"))
-                    }
-                }
-                scm { url.set(providers.gradleProperty("POM_SCM_URL")) }
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, automaticRelease = true)
+    signAllPublications()
+
+    coordinates(
+        groupId = providers.gradleProperty("GROUP").get(),
+        artifactId = "nitroping",
+        version = providers.gradleProperty("VERSION").get(),
+    )
+
+    pom {
+        name.set(providers.gradleProperty("POM_NAME"))
+        description.set(providers.gradleProperty("POM_DESCRIPTION"))
+        url.set(providers.gradleProperty("POM_URL"))
+        licenses {
+            license {
+                name.set(providers.gradleProperty("POM_LICENSE_NAME"))
+                url.set(providers.gradleProperty("POM_LICENSE_URL"))
+                distribution.set(providers.gradleProperty("POM_LICENSE_DIST"))
             }
+        }
+        developers {
+            developer {
+                id.set(providers.gradleProperty("POM_DEVELOPER_ID"))
+                name.set(providers.gradleProperty("POM_DEVELOPER_NAME"))
+                url.set(providers.gradleProperty("POM_DEVELOPER_URL"))
+            }
+        }
+        scm {
+            url.set(providers.gradleProperty("POM_SCM_URL"))
+            connection.set("scm:git:" + providers.gradleProperty("POM_SCM_URL").get() + ".git")
+            developerConnection.set("scm:git:" + providers.gradleProperty("POM_SCM_URL").get() + ".git")
         }
     }
 }
