@@ -12,8 +12,8 @@
   <a href="https://npmjs.com/package/nitroping"><img src="https://img.shields.io/npm/v/nitroping?style=flat&colorA=18181B&colorB=34d399" alt="npm version"></a>
   <a href="https://npmjs.com/package/nitroping"><img src="https://img.shields.io/npm/dm/nitroping?style=flat&colorA=18181B&colorB=34d399" alt="npm downloads"></a>
   <a href="https://bundlephobia.com/result?p=nitroping"><img src="https://img.shields.io/bundlephobia/minzip/nitroping?style=flat&colorA=18181B&colorB=34d399" alt="bundle size"></a>
-  <a href="https://github.com/productdevbook/nitroping-js/blob/main/LICENSE"><img src="https://img.shields.io/github/license/productdevbook/nitroping-js?style=flat&colorA=18181B&colorB=34d399" alt="license"></a>
-  <a href="https://github.com/productdevbook/nitroping-js/stargazers"><img src="https://img.shields.io/github/stars/productdevbook/nitroping-js?style=flat&colorA=18181B&colorB=34d399" alt="GitHub stars"></a>
+  <a href="https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/productdevbook/nitroping-sdk?style=flat&colorA=18181B&colorB=34d399" alt="license"></a>
+  <a href="https://github.com/productdevbook/nitroping-sdk/stargazers"><img src="https://img.shields.io/github/stars/productdevbook/nitroping-sdk?style=flat&colorA=18181B&colorB=34d399" alt="GitHub stars"></a>
 </p>
 
 ## Why nitroping?
