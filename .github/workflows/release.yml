@@ -1,0 +1,128 @@
+name: release
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      # Intentionally NOT matching go/v* — Go release is just the tag itself,
+      # no publish step needed. pkg.go.dev fetches on first `go get`.
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # npm — ACTIVE. Requires NPM_TOKEN repo secret.
+  # ──────────────────────────────────────────────────────────────────────────
+  npm:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # for npm provenance when publishing
+    defaults:
+      run:
+        working-directory: js
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: js/pnpm-lock.yaml
+          registry-url: 'https://registry.npmjs.org'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm publish --access public --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # PyPI — DISABLED. Add `PYPI_TOKEN` repo secret + change `if: false` to
+  # `if: true` (or remove the gate) to enable.
+  # ──────────────────────────────────────────────────────────────────────────
+  pypi:
+    if: false
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Maven Central (Kotlin) — DISABLED. Requires multiple secrets:
+  #   - OSSRH_USERNAME (Sonatype OSSRH staging account user)
+  #   - OSSRH_PASSWORD
+  #   - SIGNING_KEY     (ASCII-armored GPG private key)
+  #   - SIGNING_KEY_ID
+  #   - SIGNING_PASSWORD
+  # Set up at https://central.sonatype.com first, then flip `if: false`.
+  # ──────────────────────────────────────────────────────────────────────────
+  maven:
+    if: false
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kotlin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :nitroping:publishToMavenCentral --no-configuration-cache
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.OSSRH_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.OSSRH_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Packagist — NO JOB NEEDED. Once the user submits the repo URL at
+  # https://packagist.org/packages/submit, every tag push is auto-indexed
+  # via the GitHub webhook. No secret. No CI step.
+  # ──────────────────────────────────────────────────────────────────────────
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Go — NO JOB NEEDED. pkg.go.dev pulls from `go/v*` tags on first
+  # `go get github.com/productdevbook/nitroping-sdk/go@v<ver>`. The tag push
+  # we do in bump.sh creates the tag; the rest is automatic.
+  # ──────────────────────────────────────────────────────────────────────────
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Swift Package Index — NO JOB NEEDED. SPI re-indexes nightly from any
+  # public repo with a Package.swift. To list the package faster, submit at
+  # https://swiftpackageindex.com/add-a-package
+  # ──────────────────────────────────────────────────────────────────────────
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # GitHub Release — create a release with auto-generated changelog notes.
+  # Runs after the npm job (so the artifact is on the package registry before
+  # GitHub announces it). Failure here doesn't roll back the npm publish.
+  # ──────────────────────────────────────────────────────────────────────────
+  github-release:
+    needs: [npm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need full history for auto-changelog
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --generate-notes
