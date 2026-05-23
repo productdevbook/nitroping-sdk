@@ -1,21 +1,13 @@
-# nitroping-php
+# nitroping (PHP SDK)
 
-> 📦 Part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo.
-> The Packagist name (`productdevbook/nitroping`) is unchanged. See the [top-level README](../README.md) for SDKs in other languages.
+[![Packagist version](https://img.shields.io/packagist/v/productdevbook/nitroping?logo=packagist&color=f28d1a)](https://packagist.org/packages/productdevbook/nitroping)
+[![Packagist downloads](https://img.shields.io/packagist/dm/productdevbook/nitroping?logo=packagist)](https://packagist.org/packages/productdevbook/nitroping)
+[![PHP version](https://img.shields.io/packagist/php-v/productdevbook/nitroping?logo=php)](https://packagist.org/packages/productdevbook/nitroping)
+[![license MIT](https://img.shields.io/packagist/l/productdevbook/nitroping)](https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE)
 
-<p align="center">
-  <br>
-  <b style="font-size: 2em;">nitroping-php</b>
-  <br><br>
-  Zero-dependency PHP SDK for <a href="https://nitroping.dev">nitroping</a>.
-  <br>
-  Send push notifications, register devices, verify webhooks. PHP 8.2+, strict types, PHPStan level 9.
-  <br><br>
-  <a href="https://packagist.org/packages/productdevbook/nitroping"><img src="https://img.shields.io/packagist/v/productdevbook/nitroping?style=flat&colorA=18181B&colorB=34d399" alt="packagist version"></a>
-  <a href="https://packagist.org/packages/productdevbook/nitroping"><img src="https://img.shields.io/packagist/dm/productdevbook/nitroping?style=flat&colorA=18181B&colorB=34d399" alt="packagist downloads"></a>
-  <a href="https://packagist.org/packages/productdevbook/nitroping"><img src="https://img.shields.io/packagist/dependency-v/productdevbook/nitroping/php?style=flat&colorA=18181B&colorB=34d399" alt="php version"></a>
-  <a href="https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/productdevbook/nitroping-sdk?style=flat&colorA=18181B&colorB=34d399" alt="license"></a>
-</p>
+> Zero-dependency PHP SDK for [nitroping](https://nitroping.dev) push notifications. Send pushes, register devices, verify webhooks. PHP 8.2+, strict types, PHPStan level 9.
+
+> 📦 Part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo. The Packagist name (`productdevbook/nitroping`) is unchanged. See the [root README](https://github.com/productdevbook/nitroping-sdk#readme) for SDKs in other languages.
 
 ## Why nitroping?
 
@@ -417,12 +409,12 @@ Tested against PHP 8.2, 8.3, and 8.4 in CI.
 
 ## License
 
-[MIT](../LICENSE) — Copyright (c) 2026 productdevbook.
+MIT — see [LICENSE](https://github.com/productdevbook/nitroping-sdk/blob/main/LICENSE). Copyright (c) 2026 productdevbook.
 
 ---
 
 <p align="center">
   <sub>
-    Built by <a href="https://github.com/productdevbook">@productdevbook</a> — <a href="https://nitroping.dev">nitroping.dev</a> · <a href="https://github.com/productdevbook/nitroping">OSS core</a>
+    Built by <a href="https://github.com/productdevbook">@productdevbook</a> — <a href="https://nitroping.dev">nitroping.dev</a> · <a href="https://github.com/productdevbook/nitroping-sdk#readme">monorepo</a> · <a href="https://github.com/productdevbook/nitroping">OSS core</a>
   </sub>
 </p>
