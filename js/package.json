@@ -28,6 +28,10 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "type": "module",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",

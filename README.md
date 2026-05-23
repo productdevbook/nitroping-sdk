@@ -22,16 +22,31 @@ All SDKs share the same HTTP API + signature format. The canonical reference liv
 
 Every SDK speaks the same wire format. Keeping them in one repo lets us update the protocol surface in one PR + one commit instead of N coordinated PRs across N repos. Each SDK still ships independently to its own package registry (npm, PyPI, Swift Package Index, Maven Central, etc.) with per-language tags (`js/v0.1.0`, `swift/v0.1.0`, `go/v0.1.0`, …).
 
-## Release tags
+## Release process
 
-Each SDK is released independently with a prefixed git tag:
+All SDKs ship in lockstep — same version across `js`, `swift`, `python`, `go`, `kotlin`, `php`.
 
-- `js/v0.1.0` → npm `nitroping@0.1.0`
-- `swift/v0.1.0` → Swift Package Index 0.1.0
-- `python/v0.1.0` → PyPI `nitroping==0.1.0`
-- `go/v0.1.0` → `github.com/productdevbook/nitroping-sdk/go@v0.1.0`
-- `kotlin/v0.1.0` → Maven Central `dev.nitroping:nitroping:0.1.0`
-- `php/v0.1.0` → Packagist `productdevbook/nitroping:0.1.0`
+```bash
+./bump.sh 0.2.0
+git push origin main --follow-tags
+```
+
+The push fires `.github/workflows/release.yml`:
+
+| Job        | Status                    | Trigger when to enable          |
+|------------|---------------------------|---------------------------------|
+| npm        | active                    | `NPM_TOKEN` already configured  |
+| PyPI       | disabled (`if: false`)    | add `PYPI_TOKEN` secret         |
+| Maven      | disabled (`if: false`)    | add 5 Sonatype OSSRH secrets    |
+| Packagist  | n/a (webhook auto-index)  | one-time submit at packagist.org|
+| Go         | n/a (`pkg.go.dev` fetches on demand) | one-time `go get` to warm cache |
+| Swift      | n/a (Swift Package Index re-indexes nightly) | one-time submit at swiftpackageindex.com |
+
+The `bump.sh` script also tags `go/v<X.Y.Z>` (Go modules subdir convention) so `go get github.com/productdevbook/nitroping-sdk/go@v<X.Y.Z>` resolves.
+
+## Versioning policy
+
+Lockstep — one source-of-truth `VERSION` file at the repo root drives every SDK manifest. Even when only one SDK has functional changes, all SDKs get the same bump. Trade-off accepted: keeps the cross-language story simple ("are you on 0.2? then features X, Y, Z are available everywhere") at the cost of occasional no-op republishes.
 
 ## License
 
