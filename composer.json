@@ -5,6 +5,7 @@
   "license": "MIT",
   "keywords": ["push", "notifications", "apns", "fcm", "web-push", "sdk", "nitroping"],
   "homepage": "https://nitroping.dev",
+  "readme": "php/README.md",
   "support": {
     "issues": "https://github.com/productdevbook/nitroping-sdk/issues",
     "source": "https://github.com/productdevbook/nitroping-sdk/tree/main/php"
@@ -24,15 +25,15 @@
     "friendsofphp/php-cs-fixer": "^3.50"
   },
   "autoload": {
-    "psr-4": { "Productdevbook\\Nitroping\\": "src/" }
+    "psr-4": { "Productdevbook\\Nitroping\\": "php/src/" }
   },
   "autoload-dev": {
-    "psr-4": { "Productdevbook\\Nitroping\\Tests\\": "tests/" }
+    "psr-4": { "Productdevbook\\Nitroping\\Tests\\": "php/tests/" }
   },
   "scripts": {
-    "test": "phpunit",
-    "analyse": "phpstan analyse src --level=9",
-    "fix": "php-cs-fixer fix"
+    "test": "phpunit -c php/phpunit.xml.dist",
+    "analyse": "phpstan analyse -c php/phpstan.neon",
+    "fix": "php-cs-fixer fix --config=php/.php-cs-fixer.dist.php"
   },
   "config": {
     "sort-packages": true

@@ -1,8 +1,6 @@
 # nitroping-php
 
 > 📦 Part of the [**nitroping-sdk**](https://github.com/productdevbook/nitroping-sdk) monorepo.
-> Distribution to Packagist goes through the [auto-mirror](https://github.com/productdevbook/nitroping-sdk-php).
->
 > The Packagist name (`productdevbook/nitroping`) is unchanged. See the [top-level README](../README.md) for SDKs in other languages.
 
 <p align="center">

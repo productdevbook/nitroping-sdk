@@ -46,14 +46,7 @@ The `bump.sh` script also tags `go/v<X.Y.Z>` (Go modules subdir convention) so `
 
 ### Packagist (PHP)
 
-Packagist needs `composer.json` at repo root, which doesn't match our `php/` subdirectory layout. We auto-mirror the `php/` subtree to [`productdevbook/nitroping-sdk-php`](https://github.com/productdevbook/nitroping-sdk-php) on every tag push (see `.github/workflows/packagist-mirror.yml`).
-
-To register on Packagist:
-1. Go to <https://packagist.org/packages/submit>
-2. Repository URL: `https://github.com/productdevbook/nitroping-sdk-php`
-3. After submission, the GitHub → Packagist webhook auto-publishes on every future tag push.
-
-Do **not** submit `productdevbook/nitroping-sdk` to Packagist — it has no root `composer.json`.
+Submit `https://github.com/productdevbook/nitroping-sdk` directly at <https://packagist.org/packages/submit>. Packagist reads the root `composer.json`; `.gitattributes` strips the other-language directories from the dist archive, so PHP users only download the PHP package.
 
 ## Versioning policy
 
