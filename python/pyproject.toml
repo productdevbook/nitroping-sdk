@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nitroping"
-version = "0.1.3"
+version = "0.2.1"
 description = "Zero-dependency Python SDK for nitroping push notifications. Send pushes, register devices, verify webhooks."
 readme = "README.md"
 license = { text = "MIT" }
