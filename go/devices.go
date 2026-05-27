@@ -31,8 +31,12 @@ func (s *DevicesService) Register(
 	opts ...RequestOption,
 ) (*DeviceResult, error) {
 	cfg := applyOptions(opts)
+	path := "/api/v1/devices"
+	if s.transport.authScheme == "Public" {
+		path = "/api/v1/public/devices"
+	}
 	var out DeviceResult
-	if err := s.transport.do(ctx, "POST", "/api/v1/devices", req, cfg, &out); err != nil {
+	if err := s.transport.do(ctx, "POST", path, req, cfg, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

@@ -24,14 +24,17 @@ final class CurlTransport implements HttpTransport
 
     private readonly string $baseUrl;
 
+    public readonly string $resolvedAuthScheme;
+
     public function __construct(
         private readonly string $apiKey,
         string $baseUrl = self::DEFAULT_BASE_URL,
         private readonly int $timeoutSeconds = 30,
-        private readonly string $authScheme = 'ApiKey',
+        ?string $authScheme = null,
         private readonly string $userAgent = 'nitroping-php/0.1.0',
     ) {
         $this->baseUrl = rtrim($baseUrl, '/');
+        $this->resolvedAuthScheme = $authScheme ?? (str_starts_with($this->apiKey, 'pk_') ? 'Public' : 'ApiKey');
     }
 
     /**
@@ -45,7 +48,7 @@ final class CurlTransport implements HttpTransport
         $url = $this->baseUrl . (str_starts_with($path, '/') ? $path : '/' . $path);
 
         $requestHeaders = [
-            'Authorization: ' . $this->authScheme . ' ' . $this->apiKey,
+            'Authorization: ' . $this->resolvedAuthScheme . ' ' . $this->apiKey,
             'Accept: application/json',
             'User-Agent: ' . $this->userAgent,
         ];

@@ -22,9 +22,10 @@ public class Devices internal constructor(private val transport: HttpTransport) 
      * an existing device matched.
      */
     public suspend fun register(input: DeviceRequest): DeviceResult {
+        val path = if (transport.authScheme == "Public") "/api/v1/public/devices" else "/api/v1/devices"
         val raw = transport.request(
             method = "POST",
-            path = "/api/v1/devices",
+            path = path,
             body = toWire(input),
         )
         return decodeResult(raw)

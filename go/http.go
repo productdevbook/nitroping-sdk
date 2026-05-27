@@ -25,6 +25,7 @@ const defaultUserAgent = "nitroping-go/0.1.0"
 type transport struct {
 	baseURL    string
 	apiKey     string
+	authScheme string
 	userAgent  string
 	httpClient *http.Client
 }
@@ -64,7 +65,7 @@ func (t *transport) do(
 		return fmt.Errorf("nitroping: build request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "ApiKey "+t.apiKey)
+	req.Header.Set("Authorization", t.authScheme+" "+t.apiKey)
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")

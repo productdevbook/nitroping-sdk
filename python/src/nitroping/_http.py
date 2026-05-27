@@ -36,6 +36,7 @@ class HttpClient:
 
     base_url: str
     api_key: str
+    auth_scheme: str
     timeout: float
     user_agent: str
 
@@ -46,10 +47,12 @@ class HttpClient:
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = 30.0,
         user_agent: str | None = None,
+        auth_scheme: str | None = None,
     ) -> None:
         if not api_key:
             raise NitropingError("api_key is required", code="invalid_argument")
         self.api_key = api_key
+        self.auth_scheme = auth_scheme or ("Public" if api_key.startswith("pk_") else "ApiKey")
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.user_agent = user_agent or f"nitroping-python/{SDK_VERSION}"
@@ -73,7 +76,7 @@ class HttpClient:
         body_bytes: bytes | None = None
 
         all_headers: dict[str, str] = {
-            "Authorization": f"ApiKey {self.api_key}",
+            "Authorization": f"{self.auth_scheme} {self.api_key}",
             "Accept": "application/json",
             "User-Agent": self.user_agent,
         }

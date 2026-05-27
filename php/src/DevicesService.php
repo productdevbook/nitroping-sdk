@@ -60,9 +60,13 @@ final class DevicesService
             $payload['metadata'] = $metadata;
         }
 
+        $isPublic = $this->transport instanceof \Productdevbook\Nitroping\Internal\CurlTransport
+            && $this->transport->resolvedAuthScheme === 'Public';
+        $path = $isPublic ? '/api/v1/public/devices' : '/api/v1/devices';
+
         return $this->transport->request(
             method: 'POST',
-            path: '/api/v1/devices',
+            path: $path,
             body: $payload,
         );
     }
