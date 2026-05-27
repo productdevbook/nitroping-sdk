@@ -84,9 +84,15 @@ func NewClient(opts ClientOptions) (*Client, error) {
 		userAgent = defaultUserAgent
 	}
 
+	authScheme := "ApiKey"
+	if len(apiKey) > 3 && apiKey[:3] == "pk_" {
+		authScheme = "Public"
+	}
+
 	tr := &transport{
 		baseURL:    cleanedBase,
 		apiKey:     apiKey,
+		authScheme: authScheme,
 		userAgent:  userAgent,
 		httpClient: httpClient,
 	}

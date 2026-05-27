@@ -45,7 +45,8 @@ class DevicesClient:
         if metadata is not None:
             wire["metadata"] = metadata
 
-        response = self._http.request("POST", "/api/v1/devices", body=wire)
+        path = "/api/v1/public/devices" if self._http.auth_scheme == "Public" else "/api/v1/devices"
+        response = self._http.request("POST", path, body=wire)
         return cast(RegisterDeviceResult, response)
 
     def deactivate(self, device_id: str) -> DeactivateDeviceResult:

@@ -65,7 +65,7 @@ export class HttpClient {
     this.apiKey = opts.apiKey
     this.baseUrl = (opts.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "")
     this.timeoutMs = opts.timeoutMs ?? 30_000
-    this.authScheme = opts.authScheme ?? "ApiKey"
+    this.authScheme = opts.authScheme ?? (opts.apiKey.startsWith("pk_") ? "Public" : "ApiKey")
     this.userAgent = opts.userAgent ?? "nitroping-js/0.1.0"
 
     const f = opts.fetch ?? globalThis.fetch

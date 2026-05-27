@@ -31,6 +31,7 @@ extension URLSession: NitropingURLSession {}
 struct HTTPTransport: Sendable {
     let baseURL: URL
     let apiKey: String
+    let authScheme: String
     let session: NitropingURLSession
     let userAgent: String
     let logger: Logger
@@ -38,6 +39,7 @@ struct HTTPTransport: Sendable {
     init(baseURL: URL, apiKey: String, session: NitropingURLSession, userAgent: String) {
         self.baseURL = baseURL
         self.apiKey = apiKey
+        self.authScheme = apiKey.hasPrefix("pk_") ? "Public" : "ApiKey"
         self.session = session
         self.userAgent = userAgent
         self.logger = Logger(subsystem: "dev.nitroping.sdk", category: "http")
@@ -95,7 +97,7 @@ struct HTTPTransport: Sendable {
         let url = Self.makeURL(base: baseURL, path: path)
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("\(authScheme) \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         if let idempotencyKey {

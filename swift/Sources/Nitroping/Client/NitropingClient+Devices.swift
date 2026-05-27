@@ -23,9 +23,10 @@ public extension NitropingClient.Devices {
         guard !registration.token.isEmpty else {
             throw NitropingError.validation("DeviceRegistration.token must not be empty")
         }
+        let path = transport.authScheme == "Public" ? "/api/v1/public/devices" : "/api/v1/devices"
         return try await transport.send(
             method: .post,
-            path: "/api/v1/devices",
+            path: path,
             body: registration
         )
     }

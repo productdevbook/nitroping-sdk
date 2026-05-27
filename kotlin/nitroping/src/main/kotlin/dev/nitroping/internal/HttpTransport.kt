@@ -36,7 +36,7 @@ import java.util.concurrent.CompletionException
 internal class HttpTransport(
     val baseUrl: String,
     private val apiKey: String,
-    private val authScheme: String = "ApiKey",
+    internal val authScheme: String = if (apiKey.startsWith("pk_")) "Public" else "ApiKey",
     private val userAgent: String = "nitroping-kotlin/$SDK_VERSION",
     private val timeoutMs: Long = 30_000L,
     /** Inject your own client for tests; default lazily builds one. */

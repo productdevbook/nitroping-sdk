@@ -12,14 +12,19 @@ export class DevicesClient {
   constructor(private readonly http: HttpClient) {}
 
   /**
-   * Register (or update) a device with the secret API key.
+   * Register (or update) a device.
+   *
+   * Uses `/api/v1/public/devices` when the client was initialised with
+   * a public key (`pk_`), `/api/v1/devices` for a secret key (`np_`).
    *
    * Idempotent on `(app_id, token, user_id)`. Returns `created: true`
    * when a new row was inserted, `created: false` when an existing
    * device matched.
    */
   async register(input: RegisterDeviceRequest): Promise<RegisterDeviceResponse> {
-    return await this.http.request<RegisterDeviceResponse>("POST", "/api/v1/devices", {
+    const path =
+      this.http.authScheme === "Public" ? "/api/v1/public/devices" : "/api/v1/devices"
+    return await this.http.request<RegisterDeviceResponse>("POST", path, {
       body: toWire(input),
     })
   }
