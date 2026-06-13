@@ -65,11 +65,13 @@ jobs:
       id-token: write   # required for npm Trusted Publisher (OIDC)
     steps:
       - uses: actions/checkout@v4
-      # Use pnpm 9 via action-setup (matches the react-native CI job). The
-      # corepack default pulls a newer pnpm whose minimum-release-age gate +
-      # strict ignored-builds turn a fresh-core install into a hard error.
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
+      # Use corepack's pnpm (v11+) like the core `npm` job — pnpm 9 does not
+      # do the npm OIDC Trusted Publisher token exchange, so its publish 404s.
+      # The install-side gripes of newer pnpm (minimum-release-age on the
+      # just-published core; strict ignored-builds from the optional Firebase
+      # peer) are neutralised by linking the in-repo core + disabling the
+      # build/age gates below.
+      - run: corepack enable
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -77,13 +79,14 @@ jobs:
       - name: Build core (js)
         working-directory: js
         run: |
-          pnpm install --frozen-lockfile
+          pnpm install --frozen-lockfile --config.minimumReleaseAge=0
           pnpm build
       - name: Install RN against the local core
         working-directory: react-native
-        # Link the in-repo core (the just-published registry version is too
-        # fresh for pnpm's release-age gate).
-        run: pnpm add "nitroping@link:../js"
+        env:
+          # Don't fail on un-run dependency build scripts (Firebase peer).
+          PNPM_CONFIG_STRICT_DEP_BUILDS: "false"
+        run: pnpm add "nitroping@link:../js" --config.minimumReleaseAge=0
       - working-directory: react-native
         run: pnpm typecheck
       - working-directory: react-native
