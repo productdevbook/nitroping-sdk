@@ -76,19 +76,25 @@ sed_inplace "s/\"nitroping\": \"\\^$OLD\"/\"nitroping\": \"^$NEW\"/" react-nativ
 
 # 3. python/pyproject.toml — bump "version = ..." + the SDK version constants
 sed_inplace "s/^version = \"$OLD\"/version = \"$NEW\"/" python/pyproject.toml
-sed_inplace "s/\"$OLD\"/\"$NEW\"/" python/src/nitroping/__init__.py 2>/dev/null || true
+sed_inplace "s/__version__ = \"$OLD\"/__version__ = \"$NEW\"/" python/src/nitroping/__init__.py 2>/dev/null || true
+sed_inplace "s/SDK_VERSION = \"$OLD\"/SDK_VERSION = \"$NEW\"/" python/src/nitroping/_http.py 2>/dev/null || true
 
-# 4. php/composer.json — composer.json's version field is OPTIONAL when reading
-#    from git tags, but if it exists, keep it in sync.
+# 4. php — composer.json version is OPTIONAL (registry reads git tags); the
+#    SDK_VERSION constant feeds the User-Agent and must stay in lockstep.
 if grep -q "\"version\"" php/composer.json 2>/dev/null; then
     sed_inplace "s/\"version\": \"$OLD\"/\"version\": \"$NEW\"/" php/composer.json
 fi
+sed_inplace "s/SDK_VERSION = '$OLD'/SDK_VERSION = '$NEW'/" php/src/Internal/CurlTransport.php 2>/dev/null || true
 
-# 5. kotlin/gradle.properties — VERSION=...
+# 5. kotlin/gradle.properties — VERSION= + the SDK_VERSION constant
 sed_inplace "s/^VERSION=$OLD/VERSION=$NEW/" kotlin/gradle.properties
+sed_inplace "s/SDK_VERSION: String = \"$OLD\"/SDK_VERSION: String = \"$NEW\"/" kotlin/nitroping/src/main/kotlin/dev/nitroping/internal/HttpTransport.kt 2>/dev/null || true
 
-# 6. Go: nothing to bump in source — the tag IS the version.
-#    Swift: nothing to bump in source either.
+# 6. Go: the tag is the version, but the User-Agent uses a constant.
+sed_inplace "s/const Version = \"$OLD\"/const Version = \"$NEW\"/" go/http.go 2>/dev/null || true
+
+# 7. Swift: package-wide version constant (User-Agent).
+sed_inplace "s/version = \"$OLD\"/version = \"$NEW\"/" swift/Sources/Nitroping/Nitroping.swift 2>/dev/null || true
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
     echo "✓ Dry run complete. Re-run without --dry-run to apply."
@@ -116,8 +122,18 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
     fi
 fi
 
-# Commit + tag
-git add -u VERSION js/package.json python/pyproject.toml kotlin/gradle.properties
+# Commit + tag. Stage every file the sed edits above may have touched —
+# manifests AND the in-source SDK_VERSION constants — so a release never
+# ships with a stale User-Agent version.
+git add -u \
+    VERSION \
+    js/package.json js/src/http.ts \
+    react-native/package.json \
+    python/pyproject.toml python/src/nitroping/__init__.py \
+    kotlin/gradle.properties \
+    go/http.go \
+    swift/Sources/Nitroping/Nitroping.swift \
+    php/src/Internal/CurlTransport.php
 if grep -q "\"version\"" php/composer.json 2>/dev/null; then
     git add -u php/composer.json
 fi
