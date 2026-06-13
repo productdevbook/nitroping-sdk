@@ -182,6 +182,9 @@ await np.notifications.send(
 | `{ deviceIds: [...] }` | Hit specific device rows         |
 | `{ userIds: [...] }`   | Hit every device row a user owns |
 
+Targets: `{ all: true }`, `{ deviceIds: [...] }`, `{ userIds: [...] }`, or
+`{ tags: [...] }`.
+
 #### `np.notifications.get(id)`
 
 Fetch a previously-enqueued notification by id. Returns the full row
@@ -190,6 +193,16 @@ Fetch a previously-enqueued notification by id. Returns the full row
 ```ts
 const n = await np.notifications.get("abc-123")
 console.log(n["counters"])
+```
+
+#### `np.notifications.cancel(id)`
+
+Cancel a scheduled or in-flight notification. Returns
+`{ id, status: "canceled" }`. Throws `code: "cannot_cancel"` (409) if it
+already reached a terminal state.
+
+```ts
+await np.notifications.cancel("abc-123")
 ```
 
 #### `np.devices.register(input)`
@@ -203,8 +216,18 @@ await np.devices.register({
   platform: "ios",
   token: deviceToken, // raw APNs hex token
   userId: "user-42",
+  tags: ["beta"],
   metadata: { app_version: "2.4.1" },
 })
+```
+
+#### `np.devices.update(id, input)`
+
+Update a device — currently its `tags` (used for tag-based targeting).
+Returns `{ id, tags }`.
+
+```ts
+await np.devices.update("device-id", { tags: ["beta", "vip"] })
 ```
 
 #### `np.devices.deactivate(id)`
@@ -213,6 +236,31 @@ Sets `status = inactive` on the device row. Subsequent sends skip it.
 
 ```ts
 await np.devices.deactivate("device-id")
+```
+
+#### `np.track.record(input)`
+
+Report a delivery/open/click signal (`POST /api/v1/track`). Identify the
+target either by `deliveryLogId` or by `notificationId + deviceToken`.
+
+```ts
+await np.track.record({ deliveryLogId: "log-1", event: "delivered" })
+await np.track.record({ notificationId: "n-1", deviceToken: "tok", event: "opened" })
+```
+
+#### `np.events.report(input)`
+
+Report an engagement event (`POST /api/v1/events`) — the public,
+unauthenticated endpoint a client app calls when a notification is opened
+or an action is clicked.
+
+```ts
+await np.events.report({
+  notificationId: "n-1",
+  deviceId: "d-1",
+  type: "clicked",
+  actionId: "reply",
+})
 ```
 
 ### `subscribeWebPush(options)` — `nitroping/web`

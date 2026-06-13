@@ -17,8 +17,10 @@
 
 import { DevicesClient } from "./devices"
 import { NitropingError } from "./errors"
+import { EventsClient } from "./events"
 import { HttpClient, type HttpClientOptions } from "./http"
 import { NotificationsClient } from "./notifications"
+import { TrackClient } from "./track"
 
 /** Constructor options for `Nitroping`. */
 export interface NitropingOptions extends Omit<HttpClientOptions, "apiKey" | "authScheme"> {
@@ -33,10 +35,14 @@ export interface NitropingOptions extends Omit<HttpClientOptions, "apiKey" | "au
 }
 
 export class Nitroping {
-  /** `notifications` resource — send, get. */
+  /** `notifications` resource — send, get, cancel. */
   readonly notifications: NotificationsClient
-  /** `devices` resource — register, deactivate. */
+  /** `devices` resource — register, update, deactivate. */
   readonly devices: DevicesClient
+  /** `track` resource — delivery/open/click callbacks (`POST /track`). */
+  readonly track: TrackClient
+  /** `events` resource — public engagement events (`POST /events`). */
+  readonly events: EventsClient
 
   /** Internal HTTP client. Exposed for advanced use (custom requests). */
   readonly http: HttpClient
@@ -53,6 +59,8 @@ export class Nitroping {
     this.http = new HttpClient({ ...options, apiKey, authScheme: "ApiKey" })
     this.notifications = new NotificationsClient(this.http)
     this.devices = new DevicesClient(this.http)
+    this.track = new TrackClient(this.http)
+    this.events = new EventsClient(this.http)
   }
 }
 

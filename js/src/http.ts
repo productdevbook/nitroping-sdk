@@ -17,6 +17,12 @@ import { NetworkError, NitropingError } from "./errors"
 export const DEFAULT_BASE_URL = "https://nitroping.dev"
 
 /**
+ * SDK version, surfaced in the default `User-Agent`. Keep in sync with
+ * `package.json` (the repo-root `bump.sh` updates both on release).
+ */
+export const SDK_VERSION = "0.2.2"
+
+/**
  * Constructor options shared between server and public-key clients.
  */
 export interface HttpClientOptions {
@@ -66,7 +72,7 @@ export class HttpClient {
     this.baseUrl = (opts.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "")
     this.timeoutMs = opts.timeoutMs ?? 30_000
     this.authScheme = opts.authScheme ?? (opts.apiKey.startsWith("pk_") ? "Public" : "ApiKey")
-    this.userAgent = opts.userAgent ?? "nitroping-js/0.1.0"
+    this.userAgent = opts.userAgent ?? `nitroping-js/${SDK_VERSION}`
 
     const f = opts.fetch ?? globalThis.fetch
     if (typeof f !== "function") {

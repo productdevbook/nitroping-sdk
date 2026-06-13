@@ -50,6 +50,18 @@ export class NotificationsClient {
   async get(id: string): Promise<Record<string, unknown>> {
     return await this.http.request("GET", `/api/v1/notifications/${encodeURIComponent(id)}`)
   }
+
+  /**
+   * Cancel a scheduled or in-flight notification. Wraps
+   * `DELETE /api/v1/notifications/:id`.
+   *
+   * Returns `{ id, status: "canceled" }`. Throws a `NitropingError`
+   * with `code: "cannot_cancel"` (409) if the notification already
+   * reached a terminal state, or `code: "not_found"` (404).
+   */
+  async cancel(id: string): Promise<{ id: string; status: string }> {
+    return await this.http.request("DELETE", `/api/v1/notifications/${encodeURIComponent(id)}`)
+  }
 }
 
 /**
@@ -78,6 +90,7 @@ function targetToWire(target: SendNotificationRequest["target"]): Record<string,
   if ("all" in target) return { all: target.all }
   if ("deviceIds" in target) return { device_ids: target.deviceIds }
   if ("userIds" in target) return { user_ids: target.userIds }
+  if ("tags" in target) return { tags: target.tags }
   // `target` is a discriminated union — exhaustiveness is enforced at
   // the type level, but fall back to passing through for forward compat.
   return target as Record<string, unknown>

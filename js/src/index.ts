@@ -15,16 +15,24 @@ export {
   TimestampOutOfRangeError,
   WebPushUnsupportedError,
 } from "./errors"
-export { DEFAULT_BASE_URL } from "./http"
+export { EventsClient } from "./events"
+export { DEFAULT_BASE_URL, SDK_VERSION } from "./http"
 export { Nitroping, type NitropingOptions } from "./nitroping"
 export { NotificationsClient, type SendOptions } from "./notifications"
+export { TrackClient } from "./track"
 export type {
+  EngagementEvent,
   NotificationAction,
   NotificationResponse,
   NotificationTarget,
   Platform,
   RegisterDeviceRequest,
   RegisterDeviceResponse,
+  ReportEventRequest,
   SendNotificationRequest,
+  TrackEvent,
+  TrackRequest,
+  UpdateDeviceRequest,
+  UpdateDeviceResponse,
   WebhookEvent,
 } from "./types"

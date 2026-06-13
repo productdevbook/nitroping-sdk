@@ -1,12 +1,17 @@
 /**
  * `devices` resource client.
  *
- * Mounted on `Nitroping` as `np.devices`. Wraps
- * `POST /api/v1/devices` and `DELETE /api/v1/devices/:id`.
+ * Mounted on `Nitroping` as `np.devices`. Wraps `POST /api/v1/devices`,
+ * `PUT /api/v1/devices/:id`, and `DELETE /api/v1/devices/:id`.
  */
 
 import type { HttpClient } from "./http"
-import type { RegisterDeviceRequest, RegisterDeviceResponse } from "./types"
+import type {
+  RegisterDeviceRequest,
+  RegisterDeviceResponse,
+  UpdateDeviceRequest,
+  UpdateDeviceResponse,
+} from "./types"
 
 export class DevicesClient {
   constructor(private readonly http: HttpClient) {}
@@ -22,11 +27,26 @@ export class DevicesClient {
    * device matched.
    */
   async register(input: RegisterDeviceRequest): Promise<RegisterDeviceResponse> {
-    const path =
-      this.http.authScheme === "Public" ? "/api/v1/public/devices" : "/api/v1/devices"
+    const path = this.http.authScheme === "Public" ? "/api/v1/public/devices" : "/api/v1/devices"
     return await this.http.request<RegisterDeviceResponse>("POST", path, {
       body: toWire(input),
     })
+  }
+
+  /**
+   * Update a device (e.g. replace its tags). Wraps `PUT /api/v1/devices/:id`.
+   *
+   * Returns `{ id, tags }`. Throws a `NitropingError` with
+   * `code: "not_found"` if the id doesn't belong to your app.
+   */
+  async update(id: string, input: UpdateDeviceRequest): Promise<UpdateDeviceResponse> {
+    const body: Record<string, unknown> = {}
+    if (input.tags !== undefined) body["tags"] = input.tags
+    return await this.http.request<UpdateDeviceResponse>(
+      "PUT",
+      `/api/v1/devices/${encodeURIComponent(id)}`,
+      { body },
+    )
   }
 
   /**
@@ -49,5 +69,6 @@ function toWire(input: RegisterDeviceRequest): Record<string, unknown> {
   if (input.webPushP256dh !== undefined) wire["web_push_p256dh"] = input.webPushP256dh
   if (input.webPushAuth !== undefined) wire["web_push_auth"] = input.webPushAuth
   if (input.metadata !== undefined) wire["metadata"] = input.metadata
+  if (input.tags !== undefined) wire["tags"] = input.tags
   return wire
 }

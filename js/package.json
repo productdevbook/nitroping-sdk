@@ -30,6 +30,7 @@
     "dist"
   ],
   "type": "module",
+  "sideEffects": false,
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "exports": {

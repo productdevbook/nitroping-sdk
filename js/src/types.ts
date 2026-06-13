@@ -9,8 +9,12 @@
 /** Supported device platforms. */
 export type Platform = "ios" | "android" | "web"
 
-/** Target selector for a notification. Exactly one of the three. */
-export type NotificationTarget = { all: true } | { deviceIds: string[] } | { userIds: string[] }
+/** Target selector for a notification. Exactly one of the four. */
+export type NotificationTarget =
+  | { all: true }
+  | { deviceIds: string[] }
+  | { userIds: string[] }
+  | { tags: string[] }
 
 /** Action button rendered on the notification (where the platform supports it). */
 export interface NotificationAction {
@@ -79,6 +83,8 @@ export interface RegisterDeviceRequest {
   webPushAuth?: string
   /** Arbitrary key-value pairs stored alongside the device row. */
   metadata?: Record<string, unknown>
+  /** Tags for tag-based targeting (`target: { tags: [...] }`). */
+  tags?: string[]
 }
 
 /** Response from `POST /api/v1/devices`. */
@@ -87,6 +93,48 @@ export interface RegisterDeviceResponse {
   id: string
   /** `true` if the device was created on this request; `false` if it already existed. */
   created: boolean
+}
+
+/** Request body for `PUT /api/v1/devices/:id` (update). */
+export interface UpdateDeviceRequest {
+  /** Replace the device's tags. */
+  tags?: string[]
+}
+
+/** Response from `PUT /api/v1/devices/:id`. */
+export interface UpdateDeviceResponse {
+  /** UUID of the device row. */
+  id: string
+  /** The device's tags after the update. */
+  tags: string[]
+}
+
+/** Delivery-tracking event type for `POST /api/v1/track`. */
+export type TrackEvent = "delivered" | "opened" | "clicked"
+
+/**
+ * Request for `POST /api/v1/track`. Either identify the delivery by its
+ * `deliveryLogId`, or by `notificationId` + the device's `deviceToken`.
+ */
+export type TrackRequest =
+  | { deliveryLogId: string; event: TrackEvent }
+  | { notificationId: string; deviceToken: string; event: TrackEvent }
+
+/** Engagement event type for `POST /api/v1/events`. */
+export type EngagementEvent = "opened" | "clicked"
+
+/** Request body for `POST /api/v1/events` (public, unauthenticated engagement). */
+export interface ReportEventRequest {
+  /** UUID of the notification. */
+  notificationId: string
+  /** UUID of the device. */
+  deviceId: string
+  /** Event type. */
+  type: EngagementEvent
+  /** Optional action button id (for `clicked` on an action). */
+  actionId?: string
+  /** Optional ISO-8601 timestamp of when the event happened. */
+  happenedAt?: string
 }
 
 /**
