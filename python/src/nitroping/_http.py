@@ -23,7 +23,7 @@ DEFAULT_BASE_URL = "https://nitroping.dev"
 
 #: SDK version — bumped via ``pyproject.toml``. Used in the User-Agent
 #: header so requests can be attributed during incident investigation.
-SDK_VERSION = "0.2.8"
+SDK_VERSION = "0.2.9"
 
 
 class HttpClient:

@@ -20,7 +20,7 @@ export const DEFAULT_BASE_URL = "https://nitroping.dev"
  * SDK version, surfaced in the default `User-Agent`. Keep in sync with
  * `package.json` (the repo-root `bump.sh` updates both on release).
  */
-export const SDK_VERSION = "0.2.8"
+export const SDK_VERSION = "0.2.9"
 
 /**
  * Constructor options shared between server and public-key clients.
