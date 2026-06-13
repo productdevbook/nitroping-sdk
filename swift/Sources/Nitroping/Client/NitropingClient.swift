@@ -53,6 +53,13 @@ public final class NitropingClient: Sendable {
     /// kept for parity with the TS SDK and for Swift-on-the-server users.
     public let notifications: Notifications
 
+    /// Delivery-tracking callbacks (`POST /api/v1/track`). Used by
+    /// server-side senders to report delivered / opened / clicked.
+    public let track: Track
+
+    /// Public, unauthenticated endpoints (VAPID key fetch).
+    public let publicApi: PublicAPI
+
     private let transport: HTTPTransport
 
     /// Designated initializer.
@@ -73,6 +80,8 @@ public final class NitropingClient: Sendable {
         self.devices = Devices(transport: transport)
         self.events = Events(transport: transport)
         self.notifications = Notifications(transport: transport)
+        self.track = Track(transport: transport)
+        self.publicApi = PublicAPI(transport: transport)
     }
 
     // MARK: - Subclient declarations
@@ -95,6 +104,18 @@ public final class NitropingClient: Sendable {
 
     /// Notification-creation subclient.
     public final class Notifications: Sendable {
+        let transport: HTTPTransport
+        init(transport: HTTPTransport) { self.transport = transport }
+    }
+
+    /// Delivery-tracking subclient.
+    public final class Track: Sendable {
+        let transport: HTTPTransport
+        init(transport: HTTPTransport) { self.transport = transport }
+    }
+
+    /// Public (unauthenticated) endpoints subclient.
+    public final class PublicAPI: Sendable {
         let transport: HTTPTransport
         init(transport: HTTPTransport) { self.transport = transport }
     }

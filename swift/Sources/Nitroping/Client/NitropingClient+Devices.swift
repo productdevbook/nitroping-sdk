@@ -31,6 +31,23 @@ public extension NitropingClient.Devices {
         )
     }
 
+    /// Update a device — today only its tags. Wraps
+    /// `PUT /api/v1/devices/:id` with body `{"tags": [...]}`. Pass `[]`
+    /// to clear all tags. Returns the device id + tags after the update.
+    ///
+    /// - Throws: `NitropingError.notFound` (404) if the id is unknown.
+    @discardableResult
+    func update(id: String, tags: [String]) async throws -> DeviceUpdateResponse {
+        guard !id.isEmpty else {
+            throw NitropingError.validation("Device id must not be empty")
+        }
+        return try await transport.send(
+            method: .put,
+            path: "/api/v1/devices/\(id)",
+            body: DeviceUpdateBody(tags: tags)
+        )
+    }
+
     /// Soft-delete a device (sets `status = inactive`). Idempotent; calling
     /// twice still returns 200 on the second call.
     @discardableResult
@@ -43,4 +60,8 @@ public extension NitropingClient.Devices {
             path: "/api/v1/devices/\(id)"
         )
     }
+}
+
+private struct DeviceUpdateBody: Encodable {
+    let tags: [String]
 }

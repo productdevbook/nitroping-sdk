@@ -41,6 +41,31 @@ public extension NitropingClient.Notifications {
             path: "/api/v1/notifications/\(id)"
         )
     }
+
+    /// Cancel a scheduled or in-flight notification.
+    ///
+    /// Wraps `DELETE /api/v1/notifications/:id`. Returns `{id, status}`
+    /// where `status` is usually `"canceled"`. Throws
+    /// `NitropingError.server(status: 409, ...)` with code
+    /// `"cannot_cancel"` if the notification already reached a terminal
+    /// state, or `NitropingError.notFound` (404) if the id is unknown.
+    @discardableResult
+    func cancel(id: String) async throws -> CancelNotificationResponse {
+        guard !id.isEmpty else {
+            throw NitropingError.validation("Notification id must not be empty")
+        }
+        return try await transport.send(
+            method: .delete,
+            path: "/api/v1/notifications/\(id)"
+        )
+    }
+}
+
+/// Response body for `DELETE /api/v1/notifications/:id`.
+public struct CancelNotificationResponse: Decodable, Equatable, Sendable {
+    public let id: String
+    /// Terminal status after cancellation — usually `"canceled"`.
+    public let status: String
 }
 
 /// Server response for `GET /api/v1/notifications/:id`. Many fields are

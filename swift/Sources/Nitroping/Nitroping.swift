@@ -28,10 +28,10 @@ import Foundation
 
 /// Package-wide version string. Sent as part of the `User-Agent` on every
 /// outbound request so that the dashboard's device-list view can show
-/// "registered from nitroping-swift/0.1.0".
+/// "registered from nitroping-swift/0.2.3".
 public enum NitropingSDK {
     /// Semantic version. Bump in lock-step with git tags.
-    public static let version = "0.1.0"
+    public static let version = "0.2.3"
 
     /// Default base URL. Overridable on `NitropingClient.init` for staging /
     /// self-hosted deployments.

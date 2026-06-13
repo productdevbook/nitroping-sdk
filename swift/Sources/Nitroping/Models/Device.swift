@@ -42,13 +42,18 @@ public struct DeviceRegistration: Codable, Equatable, Sendable {
     /// dashboard device-list view; never gated on a value.
     public let metadata: [String: String]?
 
+    /// Segmentation labels used by `NotificationTarget.tags([...])`.
+    /// Trimmed + deduped server-side (max 32 tags / 64 bytes each).
+    public let tags: [String]?
+
     public init(
         platform: DevicePlatform,
         token: String,
         userId: String? = nil,
         webPushP256dh: String? = nil,
         webPushAuth: String? = nil,
-        metadata: [String: String]? = nil
+        metadata: [String: String]? = nil,
+        tags: [String]? = nil
     ) {
         self.platform = platform
         self.token = token
@@ -56,6 +61,7 @@ public struct DeviceRegistration: Codable, Equatable, Sendable {
         self.webPushP256dh = webPushP256dh
         self.webPushAuth = webPushAuth
         self.metadata = metadata
+        self.tags = tags
     }
 
     enum CodingKeys: String, CodingKey {
@@ -65,6 +71,7 @@ public struct DeviceRegistration: Codable, Equatable, Sendable {
         case webPushP256dh = "web_push_p256dh"
         case webPushAuth = "web_push_auth"
         case metadata
+        case tags
     }
 }
 
@@ -77,6 +84,14 @@ public struct DeviceRegistrationResponse: Codable, Equatable, Sendable {
 
     /// True on first-register, false on idempotent replay.
     public let created: Bool
+}
+
+/// Response body for `PUT /api/v1/devices/:id` (update). Echoes the
+/// device's tags after the change.
+public struct DeviceUpdateResponse: Codable, Equatable, Sendable {
+    public let id: String
+    /// The device's tags after the update.
+    public let tags: [String]
 }
 
 /// Response body for `DELETE /api/v1/devices/:id`.

@@ -14,6 +14,8 @@ public enum NotificationTarget: Equatable, Sendable {
     case deviceIds([String])
     /// Send to every device bound to the given user ids.
     case userIds([String])
+    /// Send to every device carrying any of the given tags.
+    case tags([String])
 }
 
 extension NotificationTarget: Encodable {
@@ -26,6 +28,8 @@ extension NotificationTarget: Encodable {
             try container.encode(ids, forKey: GenericKey(stringValue: "device_ids")!)
         case .userIds(let ids):
             try container.encode(ids, forKey: GenericKey(stringValue: "user_ids")!)
+        case .tags(let tags):
+            try container.encode(tags, forKey: GenericKey(stringValue: "tags")!)
         }
     }
 
@@ -44,37 +48,68 @@ public struct CreateNotification: Encodable, Sendable {
     public let title: String?
     public let body: String?
     public let target: NotificationTarget
+    /// Template slug — alternative to `title + body` (Pro tier). Mixing
+    /// the two is a 422 server-side.
+    public let template: String?
+    /// Variables interpolated into the template. Wire key `vars`.
+    public let templateVars: [String: String]?
     public let deepLink: URL?
+    /// Legacy fallback URL opened on tap. Prefer `deepLink`.
+    public let clickAction: String?
+    /// Notification icon URL.
+    public let icon: String?
+    /// Notification image URL.
+    public let image: String?
     public let actions: [NitropingAction]?
     public let data: [String: String]?
     public let scheduledAt: Date?
+    /// After this instant the notification is dropped rather than sent.
+    public let expiresAt: Date?
 
     public init(
         title: String?,
         body: String?,
         target: NotificationTarget,
+        template: String? = nil,
+        templateVars: [String: String]? = nil,
         deepLink: URL? = nil,
+        clickAction: String? = nil,
+        icon: String? = nil,
+        image: String? = nil,
         actions: [NitropingAction]? = nil,
         data: [String: String]? = nil,
-        scheduledAt: Date? = nil
+        scheduledAt: Date? = nil,
+        expiresAt: Date? = nil
     ) {
         self.title = title
         self.body = body
         self.target = target
+        self.template = template
+        self.templateVars = templateVars
         self.deepLink = deepLink
+        self.clickAction = clickAction
+        self.icon = icon
+        self.image = image
         self.actions = actions
         self.data = data
         self.scheduledAt = scheduledAt
+        self.expiresAt = expiresAt
     }
 
     enum CodingKeys: String, CodingKey {
         case title
         case body
         case target
+        case template
+        case templateVars = "vars"
         case deepLink = "deep_link"
+        case clickAction = "click_action"
+        case icon
+        case image
         case actions
         case data
         case scheduledAt = "scheduled_at"
+        case expiresAt = "expires_at"
     }
 }
 

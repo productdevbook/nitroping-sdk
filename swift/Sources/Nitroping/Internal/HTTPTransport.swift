@@ -12,10 +12,11 @@ import FoundationNetworking
 #endif
 import os.log
 
-/// Methods we use. Kept narrow because the API never needs PATCH / PUT.
+/// Methods we use. `PUT` is used by the device-update endpoint.
 enum HTTPMethod: String {
     case get = "GET"
     case post = "POST"
+    case put = "PUT"
     case delete = "DELETE"
 }
 
