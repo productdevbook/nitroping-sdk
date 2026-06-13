@@ -12,6 +12,6 @@ final class MissingSignatureHeaderException extends NitropingException
 {
     public function __construct(string $message = 'Missing X-Nitroping-Signature header')
     {
-        parent::__construct($message, 'missing_signature_header');
+        parent::__construct($message, 'missing_signature');
     }
 }

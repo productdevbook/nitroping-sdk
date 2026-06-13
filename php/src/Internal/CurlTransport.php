@@ -20,7 +20,7 @@ use Productdevbook\Nitroping\Exceptions\NitropingException;
 final class CurlTransport implements HttpTransport
 {
     public const DEFAULT_BASE_URL = 'https://nitroping.dev';
-    public const SDK_VERSION = '0.1.0';
+    public const SDK_VERSION = '0.2.3';
 
     private readonly string $baseUrl;
 
@@ -31,7 +31,7 @@ final class CurlTransport implements HttpTransport
         string $baseUrl = self::DEFAULT_BASE_URL,
         private readonly int $timeoutSeconds = 30,
         ?string $authScheme = null,
-        private readonly string $userAgent = 'nitroping-php/0.1.0',
+        private readonly string $userAgent = 'nitroping-php/' . self::SDK_VERSION,
     ) {
         $this->baseUrl = rtrim($baseUrl, '/');
         $this->resolvedAuthScheme = $authScheme ?? (str_starts_with($this->apiKey, 'pk_') ? 'Public' : 'ApiKey');

@@ -43,6 +43,9 @@ final class Nitroping
     /** `events` resource — record delivery/open/click telemetry. */
     public readonly EventsService $events;
 
+    /** `track` resource — server-side delivery/open/click callbacks. */
+    public readonly TrackService $track;
+
     /** Internal transport. Exposed for advanced use (custom requests). */
     public readonly HttpTransport $transport;
 
@@ -82,6 +85,7 @@ final class Nitroping
         $this->notifications = new NotificationsService($transport);
         $this->devices = new DevicesService($transport);
         $this->events = new EventsService($transport);
+        $this->track = new TrackService($transport);
     }
 
     private static function readEnv(string $name): ?string

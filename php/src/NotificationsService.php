@@ -31,6 +31,7 @@ final class NotificationsService
      *   - `['all' => true]`
      *   - `['deviceIds' => ['d1', 'd2', ...]]`
      *   - `['userIds'   => ['u1', 'u2', ...]]`
+     *   - `['tags'      => ['t1', 't2', ...]]`
      *
      * `actions` is a list of `['id' => string, 'title' => string, 'icon' => ?string]`.
      *
@@ -42,6 +43,7 @@ final class NotificationsService
      *   all?: bool,
      *   deviceIds?: list<string>,
      *   userIds?: list<string>,
+     *   tags?: list<string>,
      * } $target
      * @param list<array{id: string, title: string, icon?: string}>|null $actions
      * @param array<string, mixed>|null $vars
@@ -131,6 +133,25 @@ final class NotificationsService
     }
 
     /**
+     * Cancel a previously-enqueued notification.
+     *
+     * Returns `['id' => string, 'status' => 'canceled']`. Throws an
+     * {@see \Productdevbook\Nitroping\Exceptions\ApiException} with
+     * `code: "cannot_cancel"` (409) if the notification has already been
+     * sent (or is otherwise past the point of no return), or
+     * `code: "not_found"` if the id doesn't belong to your app.
+     *
+     * @return array<string, mixed>
+     */
+    public function cancel(string $id): array
+    {
+        return $this->transport->request(
+            method: 'DELETE',
+            path: '/api/v1/notifications/' . rawurlencode($id),
+        );
+    }
+
+    /**
      * Translate the camelCase SDK shape into the snake_case wire shape
      * the Phoenix controller expects.
      *
@@ -138,6 +159,7 @@ final class NotificationsService
      *   all?: bool,
      *   deviceIds?: list<string>,
      *   userIds?: list<string>,
+     *   tags?: list<string>,
      * } $target
      * @param list<array{id: string, title: string, icon?: string}>|null $actions
      * @param array<string, mixed>|null $vars
@@ -207,6 +229,7 @@ final class NotificationsService
      *   all?: bool,
      *   deviceIds?: list<string>,
      *   userIds?: list<string>,
+     *   tags?: list<string>,
      * } $target
      *
      * @return array<string, mixed>
@@ -221,6 +244,9 @@ final class NotificationsService
         }
         if (array_key_exists('userIds', $target)) {
             return ['user_ids' => $target['userIds']];
+        }
+        if (array_key_exists('tags', $target)) {
+            return ['tags' => $target['tags']];
         }
 
         // Unknown shape — pass through for forward compatibility.

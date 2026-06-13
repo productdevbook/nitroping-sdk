@@ -9,7 +9,9 @@ use Productdevbook\Nitroping\Internal\HttpTransport;
 /**
  * `devices` resource — mounted on {@see Nitroping} as `$np->devices`.
  *
- * Wraps `POST /api/v1/devices` and `DELETE /api/v1/devices/:id`.
+ * Wraps `POST /api/v1/devices`, `PUT /api/v1/devices/:id`,
+ * `DELETE /api/v1/devices/:id`, and the public
+ * `GET /api/v1/public/apps/:id/vapid` key lookup.
  */
 final class DevicesService
 {
@@ -31,7 +33,12 @@ final class DevicesService
      * (extracted from `PushSubscription.getKey('p256dh' | 'auth')` in the
      * browser).
      *
+     * Pass `tags` to attach tag-based targeting labels at registration
+     * time (the server replaces the device's tag set with the supplied
+     * list).
+     *
      * @param array<string, mixed>|null $metadata
+     * @param list<string>|null         $tags
      *
      * @return array<string, mixed>
      */
@@ -42,6 +49,7 @@ final class DevicesService
         ?string $webPushP256dh = null,
         ?string $webPushAuth = null,
         ?array $metadata = null,
+        ?array $tags = null,
     ): array {
         $payload = [
             'platform' => $platform,
@@ -58,6 +66,9 @@ final class DevicesService
         }
         if ($metadata !== null) {
             $payload['metadata'] = $metadata;
+        }
+        if ($tags !== null) {
+            $payload['tags'] = $tags;
         }
 
         $isPublic = $this->transport instanceof \Productdevbook\Nitroping\Internal\CurlTransport
@@ -85,6 +96,44 @@ final class DevicesService
         return $this->transport->request(
             method: 'DELETE',
             path: '/api/v1/devices/' . rawurlencode($deviceId),
+        );
+    }
+
+    /**
+     * Update a device — currently used to replace its tag set.
+     *
+     * Sends `PUT /api/v1/devices/:id` with `['tags' => [...]]`. Returns
+     * `['id' => string, 'tags' => list<string>]`. Throws an
+     * {@see \Productdevbook\Nitroping\Exceptions\ApiException} with
+     * `code: "not_found"` if the id doesn't belong to your app.
+     *
+     * @param list<string> $tags the device's complete, replacement tag set
+     *
+     * @return array<string, mixed>
+     */
+    public function update(string $deviceId, array $tags): array
+    {
+        return $this->transport->request(
+            method: 'PUT',
+            path: '/api/v1/devices/' . rawurlencode($deviceId),
+            body: ['tags' => $tags],
+        );
+    }
+
+    /**
+     * Fetch an app's public VAPID key for Web Push subscription.
+     *
+     * Hits the unauthenticated `GET /api/v1/public/apps/:id/vapid`
+     * endpoint and returns the raw response — typically
+     * `['public_key' => string]`.
+     *
+     * @return array<string, mixed>
+     */
+    public function fetchVapidPublicKey(string $appId): array
+    {
+        return $this->transport->request(
+            method: 'GET',
+            path: '/api/v1/public/apps/' . rawurlencode($appId) . '/vapid',
         );
     }
 }

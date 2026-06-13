@@ -59,6 +59,76 @@ final class DevicesServiceTest extends TestCase
         self::assertSame('web', $body['platform']);
     }
 
+    public function testRegisterForwardsTags(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['id' => 'dev-3', 'created' => true]);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+
+        $np->devices->register(
+            platform: 'android',
+            token: 'fcm-token-xyz',
+            tags: ['vip', 'beta'],
+        );
+
+        $body = $mock->calls[0]['body'];
+        self::assertNotNull($body);
+        self::assertSame(['vip', 'beta'], $body['tags']);
+    }
+
+    public function testUpdateSendsPutWithTags(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['id' => 'dev-1', 'tags' => ['vip', 'beta']]);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+        $result = $np->devices->update('dev-1', ['vip', 'beta']);
+
+        self::assertSame(['id' => 'dev-1', 'tags' => ['vip', 'beta']], $result);
+
+        $call = $mock->calls[0];
+        self::assertSame('PUT', $call['method']);
+        self::assertSame('/api/v1/devices/dev-1', $call['path']);
+        self::assertSame(['tags' => ['vip', 'beta']], $call['body']);
+    }
+
+    public function testUpdateThrowsNotFoundOn404(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueueError(new ApiException(
+            status: 404,
+            code: 'not_found',
+            message: 'Device not found',
+        ));
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+
+        try {
+            $np->devices->update('missing', ['x']);
+            self::fail('Expected ApiException');
+        } catch (ApiException $e) {
+            self::assertSame('not_found', $e->errorCode);
+            self::assertSame(404, $e->status);
+        }
+    }
+
+    public function testFetchVapidPublicKeyGetsPublicEndpoint(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['public_key' => 'BPS_vapid_public_key']);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+        $result = $np->devices->fetchVapidPublicKey('app-123');
+
+        self::assertSame(['public_key' => 'BPS_vapid_public_key'], $result);
+
+        $call = $mock->calls[0];
+        self::assertSame('GET', $call['method']);
+        self::assertSame('/api/v1/public/apps/app-123/vapid', $call['path']);
+        self::assertNull($call['body']);
+    }
+
     public function testDeactivateSendsDelete(): void
     {
         $mock = new MockTransport();

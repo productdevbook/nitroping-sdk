@@ -116,6 +116,60 @@ final class NotificationsServiceTest extends TestCase
         self::assertSame(['device_ids' => ['d1', 'd2']], $body['target']);
     }
 
+    public function testSendConvertsTagsTargetToSnakeCase(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['id' => 'n1', 'status' => 'queued']);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+
+        $np->notifications->send(
+            title: 'x',
+            body: 'y',
+            target: ['tags' => ['vip', 'beta']],
+        );
+
+        $body = $mock->calls[0]['body'];
+        self::assertNotNull($body);
+        self::assertSame(['tags' => ['vip', 'beta']], $body['target']);
+    }
+
+    public function testCancelSendsDelete(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['id' => 'n-1', 'status' => 'canceled']);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+        $result = $np->notifications->cancel('n-1');
+
+        self::assertSame(['id' => 'n-1', 'status' => 'canceled'], $result);
+
+        $call = $mock->calls[0];
+        self::assertSame('DELETE', $call['method']);
+        self::assertSame('/api/v1/notifications/n-1', $call['path']);
+        self::assertNull($call['body']);
+    }
+
+    public function testCancelThrowsCannotCancelOn409(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueueError(new ApiException(
+            status: 409,
+            code: 'cannot_cancel',
+            message: 'Notification already sent',
+        ));
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+
+        try {
+            $np->notifications->cancel('already-sent');
+            self::fail('Expected ApiException');
+        } catch (ApiException $e) {
+            self::assertSame('cannot_cancel', $e->errorCode);
+            self::assertSame(409, $e->status);
+        }
+    }
+
     public function testSendThrowsApiExceptionOn422WithCodeAndDetails(): void
     {
         $mock = new MockTransport();
