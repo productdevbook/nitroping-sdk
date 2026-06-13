@@ -42,6 +42,34 @@ func (s *DevicesService) Register(
 	return &out, nil
 }
 
+// Update updates a device via PUT /api/v1/devices/:id. Currently the
+// only updatable field is the tag set (req.Tags). On success the result
+// is {ID, Tags} reflecting the device's tags after the update.
+//
+// Returns *APIError with Code="not_found" if the id doesn't belong to
+// the caller's app.
+//
+//	res, err := client.Devices.Update(ctx, "dev-1", nitroping.UpdateDeviceRequest{
+//	    Tags: []string{"beta", "vip"},
+//	})
+func (s *DevicesService) Update(
+	ctx context.Context,
+	id string,
+	req UpdateDeviceRequest,
+	opts ...RequestOption,
+) (*UpdateDeviceResult, error) {
+	if id == "" {
+		return nil, errors.New("nitroping: device id is required")
+	}
+	cfg := applyOptions(opts)
+	var out UpdateDeviceResult
+	path := "/api/v1/devices/" + url.PathEscape(id)
+	if err := s.transport.do(ctx, "PUT", path, req, cfg, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // Deactivate soft-deletes a device (sets status=inactive). Future
 // sends skip it. Returns *APIError with Code="not_found" if the id
 // doesn't belong to the caller's app.

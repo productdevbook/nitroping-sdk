@@ -12,10 +12,16 @@ import (
 	"strings"
 )
 
+// Version is the SDK's released version string. The Go module is
+// versioned via git tags (there is no manifest file to read at build
+// time), so this constant is the single source of truth for the
+// User-Agent. Bump it in lockstep with each tagged release.
+const Version = "0.2.3"
+
 // defaultUserAgent is appended to every outbound request so server-side
 // logs can distinguish SDK traffic from raw curl/Postman. Tracks
 // `userAgent` in the JS SDK's http.ts.
-const defaultUserAgent = "nitroping-go/0.1.0"
+const defaultUserAgent = "nitroping-go/" + Version
 
 // transport is the package-internal HTTP layer shared by the
 // notifications and devices resources. It owns the base URL, the API

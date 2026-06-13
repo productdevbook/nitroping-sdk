@@ -42,6 +42,61 @@ func ExampleClient_send() {
 	// Output: abc-123 queued
 }
 
+// ExampleTrackService_Record shows reporting a delivery event against a
+// delivery log id. The endpoint is stubbed with httptest so the example
+// runs offline.
+func ExampleTrackService_Record() {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"accepted":true}`))
+	}))
+	defer srv.Close()
+
+	client, _ := nitroping.NewClient(nitroping.ClientOptions{
+		APIKey:  "np_test",
+		BaseURL: srv.URL,
+	})
+
+	res, err := client.Track.Record(context.Background(),
+		nitroping.TrackByDeliveryLog("dl-1", nitroping.TrackDelivered))
+	if err != nil {
+		fmt.Println("track error:", err)
+		return
+	}
+	fmt.Println(res.Accepted)
+	// Output: true
+}
+
+// ExampleEventsService_Report shows reporting an engagement event from a
+// client app. The endpoint is stubbed with httptest so the example runs
+// offline.
+func ExampleEventsService_Report() {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"accepted":true}`))
+	}))
+	defer srv.Close()
+
+	client, _ := nitroping.NewClient(nitroping.ClientOptions{
+		APIKey:  "pk_test",
+		BaseURL: srv.URL,
+	})
+
+	res, err := client.Events.Report(context.Background(), nitroping.ReportEventRequest{
+		NotificationID: "n1",
+		DeviceID:       "d1",
+		Type:           nitroping.EventOpened,
+	})
+	if err != nil {
+		fmt.Println("report error:", err)
+		return
+	}
+	fmt.Println(res.Accepted)
+	// Output: true
+}
+
 // ExampleVerify shows the canonical webhook verification flow: read
 // the raw body, pull the signature header, hand both to webhooks.Verify.
 func ExampleVerify() {

@@ -65,3 +65,27 @@ func (s *NotificationsService) Get(
 	}
 	return out, nil
 }
+
+// Cancel cancels a scheduled or in-flight notification via
+// DELETE /api/v1/notifications/:id. On success the result is
+// {ID, Status: "canceled"}.
+//
+// Returns *APIError with Code="cannot_cancel" (409) if the notification
+// already reached a terminal state, or Code="not_found" (404) if the id
+// doesn't belong to the caller's app.
+func (s *NotificationsService) Cancel(
+	ctx context.Context,
+	id string,
+	opts ...RequestOption,
+) (*CancelResult, error) {
+	if id == "" {
+		return nil, errors.New("nitroping: notification id is required")
+	}
+	cfg := applyOptions(opts)
+	var out CancelResult
+	path := "/api/v1/notifications/" + url.PathEscape(id)
+	if err := s.transport.do(ctx, "DELETE", path, nil, cfg, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

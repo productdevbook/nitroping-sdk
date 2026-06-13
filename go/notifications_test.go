@@ -178,6 +178,98 @@ func TestNotificationsSend_DeviceIDsTarget(t *testing.T) {
 	}
 }
 
+func TestNotificationsSend_TagsTarget(t *testing.T) {
+	var captured map[string]any
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"n1","status":"queued"}`))
+	})
+
+	_, err := client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		Title:  "x",
+		Body:   "y",
+		Target: nitroping.Tags([]string{"beta", "vip"}),
+	})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	target, _ := captured["target"].(map[string]any)
+	tags, _ := target["tags"].([]any)
+	if len(tags) != 2 || tags[0] != "beta" || tags[1] != "vip" {
+		t.Errorf("body.target = %v, want {tags:[beta vip]}", captured["target"])
+	}
+}
+
+func TestNotificationsCancel_SendsDelete(t *testing.T) {
+	var captured struct {
+		method string
+		path   string
+		auth   string
+	}
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		captured.method = r.Method
+		captured.path = r.URL.Path
+		captured.auth = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"id":"n1","status":"canceled"}`))
+	})
+
+	result, err := client.Notifications.Cancel(context.Background(), "n1")
+	if err != nil {
+		t.Fatalf("Cancel: %v", err)
+	}
+	if captured.method != "DELETE" {
+		t.Errorf("method = %q, want DELETE", captured.method)
+	}
+	if captured.path != "/api/v1/notifications/n1" {
+		t.Errorf("path = %q", captured.path)
+	}
+	if captured.auth != "ApiKey np_test_secret" {
+		t.Errorf("Authorization = %q", captured.auth)
+	}
+	if result.ID != "n1" || result.Status != "canceled" {
+		t.Errorf("got %+v, want {n1 canceled}", result)
+	}
+}
+
+func TestNotificationsCancel_409CannotCancel(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"error":{"code":"cannot_cancel","message":"Notification already in terminal state 'sent'"}}`))
+	})
+
+	_, err := client.Notifications.Cancel(context.Background(), "n1")
+	if err == nil {
+		t.Fatal("expected APIError")
+	}
+	var apiErr *nitroping.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *APIError, got %T: %v", err, err)
+	}
+	if apiErr.StatusCode != 409 {
+		t.Errorf("StatusCode = %d, want 409", apiErr.StatusCode)
+	}
+	if apiErr.Code != "cannot_cancel" {
+		t.Errorf("Code = %q", apiErr.Code)
+	}
+}
+
+func TestNotificationsCancel_EmptyIDReturnsError(t *testing.T) {
+	client, err := nitroping.NewClient(nitroping.ClientOptions{APIKey: "np_x"})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	_, err = client.Notifications.Cancel(context.Background(), "")
+	if err == nil {
+		t.Fatal("expected error on empty notification id")
+	}
+}
+
 func TestNotificationsSend_422APIError(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

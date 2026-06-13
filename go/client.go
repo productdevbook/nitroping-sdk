@@ -42,8 +42,14 @@ type ClientOptions struct {
 type Client struct {
 	// Notifications wraps POST /api/v1/notifications and friends.
 	Notifications *NotificationsService
-	// Devices wraps POST /api/v1/devices and DELETE /api/v1/devices/:id.
+	// Devices wraps POST /api/v1/devices, PUT /api/v1/devices/:id and
+	// DELETE /api/v1/devices/:id.
 	Devices *DevicesService
+	// Track wraps POST /api/v1/track — the SDK delivery/open/click
+	// callback.
+	Track *TrackService
+	// Events wraps POST /api/v1/events — the public engagement endpoint.
+	Events *EventsService
 
 	transport *transport
 }
@@ -101,6 +107,8 @@ func NewClient(opts ClientOptions) (*Client, error) {
 		transport:     tr,
 		Notifications: &NotificationsService{transport: tr},
 		Devices:       &DevicesService{transport: tr},
+		Track:         &TrackService{transport: tr},
+		Events:        &EventsService{transport: tr},
 	}, nil
 }
 

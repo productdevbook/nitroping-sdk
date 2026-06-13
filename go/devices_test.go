@@ -97,6 +97,116 @@ func TestDevicesRegister_WebPlatformIncludesKeys(t *testing.T) {
 	}
 }
 
+func TestDevicesRegister_TagsForwarded(t *testing.T) {
+	var captured map[string]any
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"dev-3","created":true}`))
+	})
+
+	_, err := client.Devices.Register(context.Background(), nitroping.DeviceRequest{
+		Platform: nitroping.PlatformAndroid,
+		Token:    "fcm-token",
+		Tags:     []string{"beta", "vip"},
+	})
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	tags, _ := captured["tags"].([]any)
+	if len(tags) != 2 || tags[0] != "beta" || tags[1] != "vip" {
+		t.Errorf("body.tags = %v, want [beta vip]", captured["tags"])
+	}
+}
+
+func TestDevicesUpdate_PutsTags(t *testing.T) {
+	var captured struct {
+		method string
+		path   string
+		auth   string
+		ctype  string
+		body   map[string]any
+	}
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		captured.method = r.Method
+		captured.path = r.URL.Path
+		captured.auth = r.Header.Get("Authorization")
+		captured.ctype = r.Header.Get("Content-Type")
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured.body)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"id":"dev-1","tags":["beta","vip"]}`))
+	})
+
+	result, err := client.Devices.Update(context.Background(), "dev-1", nitroping.UpdateDeviceRequest{
+		Tags: []string{"beta", "vip"},
+	})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if captured.method != "PUT" {
+		t.Errorf("method = %q, want PUT", captured.method)
+	}
+	if captured.path != "/api/v1/devices/dev-1" {
+		t.Errorf("path = %q", captured.path)
+	}
+	if captured.auth != "ApiKey np_test_secret" {
+		t.Errorf("Authorization = %q", captured.auth)
+	}
+	if captured.ctype != "application/json" {
+		t.Errorf("Content-Type = %q", captured.ctype)
+	}
+	tags, _ := captured.body["tags"].([]any)
+	if len(tags) != 2 || tags[0] != "beta" || tags[1] != "vip" {
+		t.Errorf("body.tags = %v, want [beta vip]", captured.body["tags"])
+	}
+	if result.ID != "dev-1" {
+		t.Errorf("result.ID = %q, want dev-1", result.ID)
+	}
+	if len(result.Tags) != 2 || result.Tags[0] != "beta" || result.Tags[1] != "vip" {
+		t.Errorf("result.Tags = %v, want [beta vip]", result.Tags)
+	}
+}
+
+func TestDevicesUpdate_404APIError(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":{"code":"not_found","message":"Device not found"}}`))
+	})
+
+	_, err := client.Devices.Update(context.Background(), "missing", nitroping.UpdateDeviceRequest{
+		Tags: []string{"x"},
+	})
+	if err == nil {
+		t.Fatal("expected APIError")
+	}
+	var apiErr *nitroping.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *APIError, got %T: %v", err, err)
+	}
+	if apiErr.StatusCode != 404 {
+		t.Errorf("StatusCode = %d", apiErr.StatusCode)
+	}
+	if apiErr.Code != "not_found" {
+		t.Errorf("Code = %q", apiErr.Code)
+	}
+}
+
+func TestDevicesUpdate_EmptyIDReturnsError(t *testing.T) {
+	client, err := nitroping.NewClient(nitroping.ClientOptions{APIKey: "np_x"})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	_, err = client.Devices.Update(context.Background(), "", nitroping.UpdateDeviceRequest{})
+	if err == nil {
+		t.Fatal("expected error on empty device id")
+	}
+}
+
 func TestDevicesDeactivate_SendsDelete(t *testing.T) {
 	var captured struct {
 		method string
