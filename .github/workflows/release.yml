@@ -37,8 +37,18 @@ jobs:
         run: pnpm exec vitest run
       - working-directory: js
         run: pnpm build
-      - working-directory: js
-        run: pnpm publish --access public --no-git-checks --provenance
+      # Idempotent: skip if this exact version is already on the registry, so
+      # re-running a tag (e.g. after fixing a sibling job) doesn't 403 on a
+      # duplicate publish.
+      - name: Publish if new
+        working-directory: js
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "nitroping@$VERSION" version >/dev/null 2>&1; then
+            echo "nitroping@$VERSION already published — skipping."
+          else
+            pnpm publish --access public --no-git-checks --provenance
+          fi
 
   # ──────────────────────────────────────────────────────────────────────────
   # npm (React Native) — ACTIVE. Same Trusted Publisher (OIDC) flow as `npm`.
@@ -80,12 +90,18 @@ jobs:
         run: pnpm exec vitest run
       - working-directory: react-native
         run: pnpm build
-      - working-directory: react-native
+      - name: Publish if new
+        working-directory: react-native
         # Restore the published dependency range (the link: must not ship),
-        # then publish the tarball.
+        # then publish — idempotently, so re-running a tag is safe.
         run: |
           git checkout package.json
-          pnpm publish --access public --no-git-checks --provenance
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "nitroping-react-native@$VERSION" version >/dev/null 2>&1; then
+            echo "nitroping-react-native@$VERSION already published — skipping."
+          else
+            pnpm publish --access public --no-git-checks --provenance
+          fi
 
   # ──────────────────────────────────────────────────────────────────────────
   # PyPI — ACTIVE. Skips publish gracefully when PYPI_TOKEN is empty.
