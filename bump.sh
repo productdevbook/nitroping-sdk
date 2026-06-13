@@ -64,11 +64,19 @@ else
     echo "$NEW" > VERSION
 fi
 
-# 2. js/package.json — bump "version" field
+# 2. js/package.json — bump "version" field + the SDK_VERSION constant
+#    (the constant feeds the User-Agent; keeping it here prevents drift).
 sed_inplace "s/\"version\": \"$OLD\"/\"version\": \"$NEW\"/" js/package.json
+sed_inplace "s/export const SDK_VERSION = \"$OLD\"/export const SDK_VERSION = \"$NEW\"/" js/src/http.ts
 
-# 3. python/pyproject.toml — bump "version = ..."
+# 2b. react-native/package.json — bump "version" field
+sed_inplace "s/\"version\": \"$OLD\"/\"version\": \"$NEW\"/" react-native/package.json
+#     and keep its dependency on the core package in lockstep.
+sed_inplace "s/\"nitroping\": \"\\^$OLD\"/\"nitroping\": \"^$NEW\"/" react-native/package.json
+
+# 3. python/pyproject.toml — bump "version = ..." + the SDK version constants
 sed_inplace "s/^version = \"$OLD\"/version = \"$NEW\"/" python/pyproject.toml
+sed_inplace "s/\"$OLD\"/\"$NEW\"/" python/src/nitroping/__init__.py 2>/dev/null || true
 
 # 4. php/composer.json — composer.json's version field is OPTIONAL when reading
 #    from git tags, but if it exists, keep it in sync.

@@ -1,0 +1,25 @@
+name: react-native
+on:
+  push:
+    paths: ['react-native/**', '.github/workflows/react-native.yml']
+  pull_request:
+    paths: ['react-native/**', '.github/workflows/react-native.yml']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: react-native
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # No --frozen-lockfile: this package depends on the `nitroping` core by
+      # version range, and the lockfile is not committed (it would pin a
+      # link:../js dev resolution). CI resolves against the published core.
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm test
+      - run: pnpm build

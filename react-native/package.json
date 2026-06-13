@@ -1,20 +1,18 @@
 {
-  "name": "nitroping",
+  "name": "nitroping-react-native",
   "version": "0.2.3",
-  "description": "Zero-dependency TypeScript SDK for nitroping push notifications. Send pushes, register devices, verify webhooks. Works in Node, Bun, Deno, Cloudflare Workers, browsers.",
+  "description": "React Native SDK for nitroping push notifications — register device tokens (APNs/FCM) and report engagement. Bring your own token source (Firebase, Expo, or bare).",
   "keywords": [
     "apns",
-    "esm",
+    "expo",
     "fcm",
+    "hooks",
+    "nitroping",
     "notifications",
     "push",
-    "sdk",
-    "tree-shakeable",
-    "typescript",
-    "web-push",
-    "zero-dependency"
+    "react-native"
   ],
-  "homepage": "https://github.com/productdevbook/nitroping-sdk/tree/main/js",
+  "homepage": "https://github.com/productdevbook/nitroping-sdk/tree/main/react-native",
   "bugs": {
     "url": "https://github.com/productdevbook/nitroping-sdk/issues"
   },
@@ -23,7 +21,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/productdevbook/nitroping-sdk.git",
-    "directory": "js"
+    "directory": "react-native"
   },
   "funding": "https://github.com/sponsors/productdevbook",
   "files": [
@@ -37,14 +35,6 @@
     ".": {
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
-    },
-    "./web": {
-      "types": "./dist/web.d.mts",
-      "default": "./dist/web.mjs"
-    },
-    "./webhooks": {
-      "types": "./dist/webhooks.d.mts",
-      "default": "./dist/webhooks.mjs"
     }
   },
   "publishConfig": {
@@ -59,17 +49,26 @@
     "fmt": "oxfmt .",
     "test": "pnpm lint && pnpm typecheck && vitest run",
     "typecheck": "tsgo --noEmit",
-    "release": "pnpm test && pnpm build && bumpp --commit --tag --push --all",
     "prepack": "pnpm build"
   },
+  "dependencies": {
+    "nitroping": "^0.2.3"
+  },
   "devDependencies": {
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^19.0.0",
     "@typescript/native-preview": "7.0.0-dev.20260316.1",
     "@vitest/coverage-v8": "^4.1.1",
-    "bumpp": "^11.0.1",
+    "jsdom": "^29.1.1",
     "obuild": "^0.4.32",
     "oxfmt": "^0.42.0",
     "oxlint": "^1.57.0",
+    "react": "^19.0.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.1"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-native": ">=0.74"
   }
 }

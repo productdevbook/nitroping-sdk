@@ -16,7 +16,7 @@ export {
   WebPushUnsupportedError,
 } from "./errors"
 export { EventsClient } from "./events"
-export { DEFAULT_BASE_URL, SDK_VERSION } from "./http"
+export { DEFAULT_BASE_URL, HttpClient, type HttpClientOptions, SDK_VERSION } from "./http"
 export { Nitroping, type NitropingOptions } from "./nitroping"
 export { NotificationsClient, type SendOptions } from "./notifications"
 export { TrackClient } from "./track"
