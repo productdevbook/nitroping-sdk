@@ -1,8 +1,12 @@
 package nitroping_test
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	nitroping "github.com/productdevbook/nitroping-sdk/go"
@@ -78,5 +82,66 @@ func TestPackageHasNoInitSideEffects(t *testing.T) {
 	if env := os.Getenv("NITROPING_API_KEY"); env != "" {
 		// Just observe — don't fail; some CIs do export this.
 		t.Logf("NITROPING_API_KEY is set in env (len=%d)", len(env))
+	}
+}
+
+func TestDebugLogging_EmitsRedactedEvents(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"n1","status":"queued"}`))
+	}))
+	defer srv.Close()
+
+	var events []map[string]any
+	client, err := nitroping.NewClient(nitroping.ClientOptions{
+		APIKey:  "np_super_secret",
+		BaseURL: srv.URL,
+		Debug: nitroping.WithDebug(func(e map[string]any) {
+			events = append(events, e)
+		}),
+	})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	_, err = client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		Title:  "x",
+		Body:   "y",
+		Target: nitroping.AllDevices(),
+	})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+
+	if len(events) < 2 {
+		t.Fatalf("expected at least request + response events, got %d", len(events))
+	}
+	var sawRequest, sawResponse bool
+	for _, e := range events {
+		switch e["phase"] {
+		case "request":
+			sawRequest = true
+			if e["method"] != "POST" {
+				t.Errorf("request event method = %v", e["method"])
+			}
+			if e["url"] == nil || e["url"] == "" {
+				t.Errorf("request event missing url")
+			}
+		case "response":
+			sawResponse = true
+			if e["status"] != 201 {
+				t.Errorf("response event status = %v, want 201", e["status"])
+			}
+		}
+		// Secret must never appear anywhere in the event map.
+		for k, v := range e {
+			if s, ok := v.(string); ok && strings.Contains(s, "np_super_secret") {
+				t.Errorf("event %s=%q leaked API key", k, s)
+			}
+		}
+	}
+	if !sawRequest || !sawResponse {
+		t.Errorf("missing phases: request=%v response=%v", sawRequest, sawResponse)
 	}
 }

@@ -323,6 +323,118 @@ class NotificationsTest {
         assertEquals("/api/v1/public/apps/app_1/vapid", req.path)
     }
 
+    @Test fun `converts target segment to wire format with default match`() = runTest {
+        stub.enqueue(status = 201, body = """{"id":"n1","status":"queued"}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        client.notifications.send(
+            SendRequest(
+                title = "x",
+                body = "y",
+                target = Target.Segment(
+                    conditions = listOf(
+                        SegmentCondition(field = "platform", op = "eq", value = "ios"),
+                        SegmentCondition(field = "user_id", op = "exists"),
+                    ),
+                ),
+            ),
+        )
+
+        val body = Json.decode(stub.received.single().body) as Map<*, *>
+        assertEquals(
+            mapOf(
+                "segment" to mapOf(
+                    "match" to "all",
+                    "conditions" to listOf(
+                        mapOf("field" to "platform", "op" to "eq", "value" to "ios"),
+                        mapOf("field" to "user_id", "op" to "exists"),
+                    ),
+                ),
+            ),
+            body["target"],
+        )
+    }
+
+    @Test fun `segment match any is forwarded`() = runTest {
+        stub.enqueue(status = 201, body = """{"id":"n1","status":"queued"}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        client.notifications.send(
+            SendRequest(
+                title = "x",
+                body = "y",
+                target = Target.Segment(
+                    match = "any",
+                    conditions = listOf(SegmentCondition(field = "tag", op = "in", value = listOf("a", "b"))),
+                ),
+            ),
+        )
+
+        val body = Json.decode(stub.received.single().body) as Map<*, *>
+        val segment = (body["target"] as Map<*, *>)["segment"] as Map<*, *>
+        assertEquals("any", segment["match"])
+    }
+
+    @Test fun `recurrence and email_to fields are sent when set`() = runTest {
+        stub.enqueue(status = 201, body = """{"id":"n1","status":"queued"}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        client.notifications.send(
+            SendRequest(
+                title = "x",
+                body = "y",
+                recurrence = "FREQ=DAILY",
+                recurrenceTz = "Europe/Istanbul",
+                recurrenceUntil = "2026-12-31T00:00:00Z",
+                emailTo = listOf("a@example.com", "b@example.com"),
+                target = Target.All,
+            ),
+        )
+
+        val body = Json.decode(stub.received.single().body) as Map<*, *>
+        assertEquals("FREQ=DAILY", body["recurrence"])
+        assertEquals("Europe/Istanbul", body["recurrence_tz"])
+        assertEquals("2026-12-31T00:00:00Z", body["recurrence_until"])
+        assertEquals(listOf("a@example.com", "b@example.com"), body["email_to"])
+    }
+
+    @Test fun `devices register includes timezone when provided`() = runTest {
+        stub.enqueue(status = 201, body = """{"id":"dev-1","created":true}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        client.devices.register(
+            DeviceRequest(
+                platform = Platform.IOS,
+                token = "apns-token",
+                timezone = "Europe/Istanbul",
+            ),
+        )
+
+        val body = Json.decode(stub.received.single().body) as Map<*, *>
+        assertEquals("Europe/Istanbul", body["timezone"])
+    }
+
+    @Test fun `debug callback emits request and response events and redacts auth`() = runTest {
+        stub.enqueue(status = 201, body = """{"id":"n1","status":"queued"}""")
+
+        val events = mutableListOf<Map<String, Any?>>()
+        val client = NitropingClient(
+            apiKey = "np_secret",
+            baseUrl = stub.baseUrl,
+            debug = { events.add(it) },
+        )
+        client.notifications.send(SendRequest(title = "x", body = "y", target = Target.All))
+
+        assertEquals("request", events[0]["phase"])
+        assertEquals("response", events[1]["phase"])
+        assertEquals(201, events[1]["status"])
+
+        @Suppress("UNCHECKED_CAST")
+        val headers = events[0]["headers"] as Map<String, String>
+        assertTrue(headers["Authorization"]!!.contains("[REDACTED]"))
+        assertTrue(events.none { e -> e.values.any { it?.toString()?.contains("np_secret") == true } })
+    }
+
     @Test fun `notifications get returns the raw map`() = runTest {
         stub.enqueue(
             status = 200,

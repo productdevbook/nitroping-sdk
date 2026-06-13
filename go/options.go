@@ -1,5 +1,38 @@
 package nitroping
 
+import (
+	"encoding/json"
+	"log"
+)
+
+// WithDebug returns a debug logger that simply forwards each event map
+// to logger. Assign the result to ClientOptions.Debug to enable opt-in
+// request/response/error logging. The Authorization header and API key
+// are always redacted before the event reaches logger.
+//
+//	client, _ := nitroping.NewClient(nitroping.ClientOptions{
+//	    APIKey: key,
+//	    Debug:  nitroping.WithDebug(func(e map[string]any) { fmt.Println(e) }),
+//	})
+func WithDebug(logger func(event map[string]any)) func(event map[string]any) {
+	return logger
+}
+
+// WithDebugLogging returns a debug logger backed by the standard
+// library's log package: each event is JSON-encoded and written with
+// log.Printf under a "nitroping debug:" prefix. Assign the result to
+// ClientOptions.Debug.
+func WithDebugLogging() func(event map[string]any) {
+	return func(event map[string]any) {
+		buf, err := json.Marshal(event)
+		if err != nil {
+			log.Printf("nitroping debug: %v", event)
+			return
+		}
+		log.Printf("nitroping debug: %s", buf)
+	}
+}
+
 // RequestOption customises a single API call. Returned by helpers like
 // WithIdempotencyKey and passed as a trailing variadic argument to the
 // resource methods.

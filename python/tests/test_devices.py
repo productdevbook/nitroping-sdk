@@ -68,6 +68,22 @@ def test_register_with_tags(mock_urlopen):
     assert body["tags"] == ["beta", "vip"]
 
 
+def test_register_with_timezone(mock_urlopen):
+    """timezone kwarg lands on the wire as a `timezone` field."""
+    mock_urlopen.enqueue_json(201, {"id": "dev-4", "created": True})
+
+    np = Nitroping(api_key="np_x")
+    np.devices.register(
+        platform="ios",
+        token="apns-token",
+        timezone="Europe/Istanbul",
+    )
+
+    body = mock_urlopen.calls[0].body_json
+    assert body is not None
+    assert body["timezone"] == "Europe/Istanbul"
+
+
 def test_update_sends_put_with_tags(mock_urlopen):
     """PUT /api/v1/devices/:id with {tags:[...]}, returns {id, tags}."""
     mock_urlopen.enqueue_json(200, {"id": "dev-1", "tags": ["beta"]})

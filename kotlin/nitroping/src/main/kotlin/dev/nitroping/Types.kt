@@ -47,7 +47,33 @@ public sealed class Target {
      * (see [DeviceRequest.tags] and `devices.update`).
      */
     public data class Tags(public val tags: List<String>) : Target()
+
+    /**
+     * Send to every device matching an audience [segment]. Wire:
+     * `{"segment":{"match":"all"|"any","conditions":[{...}]}}`. [match]
+     * defaults to `"all"` (AND); pass `"any"` for OR over the conditions.
+     */
+    public data class Segment(
+        public val match: String = "all",
+        public val conditions: List<SegmentCondition>,
+    ) : Target()
 }
+
+/**
+ * One condition in an audience [Target.Segment].
+ *
+ * @property field device field to match — `"platform"`, `"user_id"`,
+ *                 `"timezone"`, `"tag"`, or `"metadata.<key>"`.
+ * @property op comparison operator — `"eq"`, `"neq"`, `"in"`, `"exists"`,
+ *             `"contains"`, `"gt"`, `"lt"`.
+ * @property value string, number, or list depending on [op]; omit (null)
+ *                 for `"exists"`.
+ */
+public data class SegmentCondition(
+    public val field: String,
+    public val op: String,
+    public val value: Any? = null,
+)
 
 /**
  * One action button on a notification. Stable id (`id`) round-trips into
@@ -90,7 +116,15 @@ public data class SendRequest(
     public val scheduledAt: String? = null,
     /** ISO-8601 timestamp. After this the notification is dropped. */
     public val expiresAt: String? = null,
-    /** Where to send the notification — exactly one of the three [Target] branches. */
+    /** Recurrence rule (e.g. an RRULE string). Repeats the send on a schedule. */
+    public val recurrence: String? = null,
+    /** IANA timezone the [recurrence] schedule is evaluated in (e.g. `"Europe/Istanbul"`). */
+    public val recurrenceTz: String? = null,
+    /** ISO-8601 timestamp; recurrence stops after this instant. */
+    public val recurrenceUntil: String? = null,
+    /** Email recipients for the email channel fan-out, when enabled. */
+    public val emailTo: List<String>? = null,
+    /** Where to send the notification — exactly one of the [Target] branches. */
     public val target: Target,
     /** Optional `Idempotency-Key` header value. Max 255 chars. */
     public val idempotencyKey: String? = null,
@@ -130,6 +164,11 @@ public data class DeviceRequest(
      * iOS devices; ignored for other platforms. Wire: `{"environment":...}`.
      */
     public val environment: String? = null,
+    /**
+     * IANA timezone of the device (e.g. `"Europe/Istanbul"`). Used by
+     * audience segments and recurrence scheduling. Wire: `{"timezone":...}`.
+     */
+    public val timezone: String? = null,
 )
 
 /** Response from `POST /api/v1/devices`. */
@@ -199,6 +238,31 @@ public sealed class TrackRequest {
 public data class TrackResult(
     /** Always `true` — track is best-effort and the server 202s immediately. */
     public val accepted: Boolean,
+)
+
+/**
+ * One item in a user's in-app inbox (notification center). Returned by
+ * the [InboxClient] endpoints under `/api/v1/public/inbox`.
+ */
+public data class InboxItem(
+    /** UUID of the inbox row. */
+    public val id: String,
+    /** Server-side notification id this item was fanned out from. */
+    public val notificationId: String,
+    /** Visible title, when the notification carried one. */
+    public val title: String? = null,
+    /** Visible body, when the notification carried one. */
+    public val body: String? = null,
+    /** Custom payload delivered alongside the item. */
+    public val data: Map<String, Any?>? = null,
+    /** URL or app deep link opened when the item is tapped. */
+    public val deepLink: String? = null,
+    /** `true` once the item has been marked read. */
+    public val read: Boolean,
+    /** ISO-8601 timestamp the item was marked read; null while unread. */
+    public val readAt: String? = null,
+    /** ISO-8601 timestamp the item was created. */
+    public val insertedAt: String? = null,
 )
 
 /** Response from `GET /api/v1/public/apps/:id/vapid`. */

@@ -50,8 +50,48 @@ class TargetTags(TypedDict):
     tags: list[str]
 
 
-#: Target selector for a notification. Exactly one of the four.
-NotificationTarget = TargetAll | TargetDeviceIds | TargetUserIds | TargetTags
+#: Comparison operator for a :class:`SegmentCondition`.
+SegmentOp = Literal["eq", "neq", "in", "exists", "contains", "gt", "lt"]
+
+
+class _SegmentConditionBase(TypedDict):
+    #: One of ``platform`` / ``user_id`` / ``timezone`` / ``tag`` /
+    #: ``metadata.<key>``.
+    field: str
+    op: SegmentOp
+
+
+class SegmentCondition(_SegmentConditionBase, total=False):
+    """A single audience-segment condition over device fields + metadata."""
+
+    #: String, number, or list depending on ``op`` (omit for ``exists``).
+    value: str | int | float | list[str | int | float]
+
+
+class _SegmentBase(TypedDict):
+    conditions: list[SegmentCondition]
+
+
+class Segment(_SegmentBase, total=False):
+    """Audience segment — match devices by a list of conditions.
+
+    ``match`` is AND (``"all"``, default) or OR (``"any"``) over the
+    conditions. When omitted the SDK applies ``"all"`` before sending.
+    """
+
+    match: Literal["all", "any"]
+
+
+class TargetSegment(TypedDict):
+    """Hit every device row matching the given audience segment."""
+
+    segment: Segment
+
+
+#: Target selector for a notification. Exactly one of the five.
+NotificationTarget = (
+    TargetAll | TargetDeviceIds | TargetUserIds | TargetTags | TargetSegment
+)
 
 
 class SendOptions(TypedDict, total=False):

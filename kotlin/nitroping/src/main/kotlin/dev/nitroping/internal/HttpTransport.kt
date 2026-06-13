@@ -26,6 +26,7 @@ import dev.nitroping.NetworkException
 import dev.nitroping.NitropingException
 import kotlinx.coroutines.future.await
 import java.net.URI
+import java.net.URLEncoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -41,6 +42,12 @@ internal class HttpTransport(
     private val timeoutMs: Long = 30_000L,
     /** Inject your own client for tests; default lazily builds one. */
     private val client: HttpClient = defaultClient(timeoutMs),
+    /**
+     * Opt-in debug callback. When non-null, receives one event map per
+     * request and per response/error (`{"phase","method","url",...}`). The
+     * `Authorization` header / API key is always redacted. Off by default.
+     */
+    private val debug: ((Map<String, Any?>) -> Unit)? = null,
 ) {
     /**
      * Send a request and decode the response.
@@ -64,8 +71,9 @@ internal class HttpTransport(
         path: String,
         body: Any? = null,
         headers: Map<String, String> = emptyMap(),
+        query: Map<String, Any?> = emptyMap(),
     ): Any? {
-        val url = buildUrl(path)
+        val url = buildUrl(path, query)
         val builder = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .timeout(Duration.ofMillis(timeoutMs))
@@ -85,6 +93,18 @@ internal class HttpTransport(
 
         for ((k, v) in headers) builder.header(k, v)
 
+        debug?.invoke(
+            mapOf(
+                "phase" to "request",
+                "method" to method,
+                "url" to url,
+                // Always redact the auth header / key.
+                "headers" to redactedHeaders(headers),
+                "body" to body,
+            ),
+        )
+
+        val startedAt = System.currentTimeMillis()
         val response: HttpResponse<String> = try {
             client.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofString(Charsets.UTF_8))
                 .await()
@@ -92,15 +112,48 @@ internal class HttpTransport(
             throw ce
         } catch (ce: CompletionException) {
             val cause = ce.cause ?: ce
+            debug?.invoke(errorEvent(method, url, startedAt, cause))
             if (cause is NitropingException) throw cause
             throw NetworkException("Request to $url failed: ${cause.message}", cause)
         } catch (e: Throwable) {
+            debug?.invoke(errorEvent(method, url, startedAt, e))
             if (e is NitropingException) throw e
             throw NetworkException("Request to $url failed: ${e.message}", e)
         }
 
+        debug?.invoke(
+            mapOf(
+                "phase" to "response",
+                "method" to method,
+                "url" to url,
+                "status" to response.statusCode(),
+                "ms" to (System.currentTimeMillis() - startedAt),
+                "body" to (response.body() ?: ""),
+            ),
+        )
+
         return parseResponse(response)
     }
+
+    private fun redactedHeaders(headers: Map<String, String>): Map<String, String> {
+        val out = LinkedHashMap<String, String>()
+        out["Authorization"] = "$authScheme [REDACTED]"
+        out["Accept"] = "application/json"
+        out["User-Agent"] = userAgent
+        for ((k, v) in headers) {
+            out[k] = if (k.equals("Authorization", ignoreCase = true)) "[REDACTED]" else v
+        }
+        return out
+    }
+
+    private fun errorEvent(method: String, url: String, startedAt: Long, cause: Throwable): Map<String, Any?> =
+        mapOf(
+            "phase" to "error",
+            "method" to method,
+            "url" to url,
+            "ms" to (System.currentTimeMillis() - startedAt),
+            "error" to (cause.message ?: cause.toString()),
+        )
 
     private fun parseResponse(response: HttpResponse<String>): Any? {
         val text = response.body() ?: ""
@@ -131,11 +184,20 @@ internal class HttpTransport(
         return parsed
     }
 
-    private fun buildUrl(path: String): String {
+    private fun buildUrl(path: String, query: Map<String, Any?> = emptyMap()): String {
         val normalized = if (path.startsWith("/")) path else "/$path"
         val trimmedBase = baseUrl.trimEnd('/')
-        return "$trimmedBase$normalized"
+        val base = "$trimmedBase$normalized"
+        val pairs = query.entries.filter { it.value != null }
+        if (pairs.isEmpty()) return base
+        val qs = pairs.joinToString("&") { (k, v) ->
+            "${encode(k)}=${encode(v.toString())}"
+        }
+        return if (base.contains('?')) "$base&$qs" else "$base?$qs"
     }
+
+    private fun encode(s: String): String =
+        URLEncoder.encode(s, Charsets.UTF_8).replace("+", "%20")
 
     internal companion object {
         const val SDK_VERSION: String = "0.2.9"

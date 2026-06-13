@@ -268,3 +268,48 @@ func TestDevicesDeactivate_EmptyIDReturnsError(t *testing.T) {
 		t.Fatal("expected error on empty device id")
 	}
 }
+
+func TestDevicesRegister_TimezoneForwarded(t *testing.T) {
+	var captured map[string]any
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"dev-4","created":true}`))
+	})
+
+	_, err := client.Devices.Register(context.Background(), nitroping.DeviceRequest{
+		Platform: nitroping.PlatformIOS,
+		Token:    "apns-token",
+		Timezone: nitroping.String("Europe/Istanbul"),
+	})
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	if captured["timezone"] != "Europe/Istanbul" {
+		t.Errorf("body.timezone = %v, want Europe/Istanbul", captured["timezone"])
+	}
+}
+
+func TestDevicesRegister_TimezoneOmittedWhenUnset(t *testing.T) {
+	var captured map[string]any
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"dev-5","created":true}`))
+	})
+
+	_, err := client.Devices.Register(context.Background(), nitroping.DeviceRequest{
+		Platform: nitroping.PlatformAndroid,
+		Token:    "fcm-token",
+	})
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	if _, ok := captured["timezone"]; ok {
+		t.Errorf("body should not include timezone when unset")
+	}
+}

@@ -45,6 +45,15 @@ public class NitropingClient(
     userAgent: String = "nitroping-kotlin/${HttpTransport.SDK_VERSION}",
     /** Inject your own `java.net.http.HttpClient` for tests / proxy / mTLS. */
     httpClient: HttpClient? = null,
+    /**
+     * Opt-in debug callback. When non-null, receives one structured event
+     * map per request and per response/error
+     * (`{"phase":"request"|"response"|"error","method","url",...}`). The
+     * `Authorization` header / API key is always redacted before the event
+     * is emitted. Off by default — set it to route into your own logger,
+     * Sentry breadcrumbs, etc.
+     */
+    debug: ((Map<String, Any?>) -> Unit)? = null,
 ) {
     private val resolvedApiKey: String = (apiKey ?: System.getenv("NITROPING_API_KEY") ?: "")
         .also {
@@ -61,6 +70,7 @@ public class NitropingClient(
             userAgent = userAgent,
             timeoutMs = timeoutMs,
             client = httpClient,
+            debug = debug,
         )
     } else {
         HttpTransport(
@@ -68,6 +78,7 @@ public class NitropingClient(
             apiKey = resolvedApiKey,
             userAgent = userAgent,
             timeoutMs = timeoutMs,
+            debug = debug,
         )
     }
 
@@ -82,6 +93,9 @@ public class NitropingClient(
 
     /** `track` resource — `record` (delivered / opened / clicked callback). */
     public val track: Track = Track(transport)
+
+    /** `inbox` resource — `list`, `unreadCount`, `markRead`, `markAllRead`. */
+    public val inbox: InboxClient = InboxClient(transport)
 
     /**
      * Fetch an app's VAPID public key for Web Push.

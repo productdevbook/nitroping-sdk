@@ -25,18 +25,33 @@ type Action struct {
 	Icon string `json:"icon,omitempty"`
 }
 
+// SegmentCondition is a single audience-segment predicate over device
+// fields and metadata. Field is one of "platform", "user_id",
+// "timezone", "tag", or "metadata.<key>"; Op is the comparison operator
+// ("eq", "neq", "in", "exists", "contains", "gt", "lt"); Value is the
+// operand (string, number, or slice depending on Op — omit for "exists").
+type SegmentCondition struct {
+	Field string `json:"field"`
+	Op    string `json:"op"`
+	Value any    `json:"value,omitempty"`
+}
+
 // Target is the notification audience selector. Construct one with
-// AllDevices, DeviceIDs, UserIDs, or Tags — exactly one must be set per
-// send.
+// AllDevices, DeviceIDs, UserIDs, Tags, or Segment — exactly one must be
+// set per send.
 //
 // Target implements json.Marshaler so the SDK can emit the exact
 // snake_case wire shape the Phoenix controller expects:
-// {"all":true} | {"device_ids":[...]} | {"user_ids":[...]} | {"tags":[...]}.
+// {"all":true} | {"device_ids":[...]} | {"user_ids":[...]} | {"tags":[...]} |
+// {"segment":{"match":...,"conditions":[...]}}.
 type Target struct {
-	all       bool
-	deviceIDs []string
-	userIDs   []string
-	tags      []string
+	all               bool
+	deviceIDs         []string
+	userIDs           []string
+	tags              []string
+	segment           bool
+	segmentMatch      string
+	segmentConditions []SegmentCondition
 }
 
 // AllDevices targets every active device in the app. Equivalent to the
@@ -63,6 +78,21 @@ func Tags(tags []string) Target {
 	return Target{tags: tags}
 }
 
+// Segment targets every active device matching an audience segment — a
+// set of conditions over device fields and metadata. match is "all" (AND,
+// the default when empty) or "any" (OR) over the conditions.
+//
+//	nitroping.Segment("any", []nitroping.SegmentCondition{
+//	    {Field: "platform", Op: "eq", Value: "ios"},
+//	    {Field: "tag", Op: "contains", Value: "vip"},
+//	})
+func Segment(match string, conditions []SegmentCondition) Target {
+	if match == "" {
+		match = "all"
+	}
+	return Target{segment: true, segmentMatch: match, segmentConditions: conditions}
+}
+
 // MarshalJSON renders the Target as the wire shape:
 // {"all":true} | {"device_ids":[...]} | {"user_ids":[...]} | {"tags":[...]}.
 func (t Target) MarshalJSON() ([]byte, error) {
@@ -83,6 +113,20 @@ func (t Target) MarshalJSON() ([]byte, error) {
 		return json.Marshal(struct {
 			Tags []string `json:"tags"`
 		}{Tags: t.tags})
+	case t.segment:
+		conditions := t.segmentConditions
+		if conditions == nil {
+			conditions = []SegmentCondition{}
+		}
+		return json.Marshal(struct {
+			Segment struct {
+				Match      string             `json:"match"`
+				Conditions []SegmentCondition `json:"conditions"`
+			} `json:"segment"`
+		}{Segment: struct {
+			Match      string             `json:"match"`
+			Conditions []SegmentCondition `json:"conditions"`
+		}{Match: t.segmentMatch, Conditions: conditions}})
 	default:
 		// Empty target — caller forgot to set one. Surface as an empty
 		// object so the server returns a clean validation error instead
@@ -128,6 +172,18 @@ type SendRequest struct {
 	// ExpiresAt is an ISO-8601 timestamp; after this the notification
 	// is dropped.
 	ExpiresAt *string `json:"expires_at,omitempty"`
+	// Recurrence is a 5-field cron expression that turns this into a
+	// recurring send. The cron worker re-enqueues on each match.
+	Recurrence *string `json:"recurrence,omitempty"`
+	// RecurrenceTz is the IANA timezone the Recurrence cron is evaluated
+	// in (defaults to Etc/UTC server-side).
+	RecurrenceTz *string `json:"recurrence_tz,omitempty"`
+	// RecurrenceUntil is an ISO-8601 timestamp after which the recurrence
+	// stops firing.
+	RecurrenceUntil *string `json:"recurrence_until,omitempty"`
+	// EmailTo is an optional list of email recipients delivered alongside
+	// (or instead of) the push.
+	EmailTo []string `json:"email_to,omitempty"`
 	// Target is the notification audience selector. Required.
 	Target Target `json:"target"`
 }
@@ -173,6 +229,10 @@ type DeviceRequest struct {
 	// so report it for iOS devices; ignored for other platforms. Omitted
 	// from the wire body when nil.
 	Environment *string `json:"environment,omitempty"`
+	// Timezone is the device's IANA timezone (e.g. "Europe/Istanbul").
+	// Used for timezone-aware delivery and segment matching. Omitted from
+	// the wire body when nil.
+	Timezone *string `json:"timezone,omitempty"`
 }
 
 // DeviceResult is the response from POST /api/v1/devices.
@@ -296,4 +356,28 @@ type ReportEventRequest struct {
 type EventResult struct {
 	// Accepted is true when the server queued the engagement event (202).
 	Accepted bool `json:"accepted"`
+}
+
+// InboxItem is a single in-app notification-center entry returned by the
+// /api/v1/public/inbox endpoints. The fields mirror the snake_case wire
+// shape directly.
+type InboxItem struct {
+	// ID is the UUID of the inbox item.
+	ID string `json:"id"`
+	// NotificationID is the UUID of the notification this item came from.
+	NotificationID string `json:"notification_id"`
+	// Title is the notification title (may be empty).
+	Title string `json:"title,omitempty"`
+	// Body is the notification body (may be empty).
+	Body string `json:"body,omitempty"`
+	// Data is the custom payload delivered with the notification.
+	Data map[string]any `json:"data,omitempty"`
+	// DeepLink is the URL / app deep link opened on tap, if any.
+	DeepLink *string `json:"deep_link,omitempty"`
+	// Read is true once the item has been marked read.
+	Read bool `json:"read"`
+	// ReadAt is the ISO-8601 timestamp the item was marked read, if any.
+	ReadAt *string `json:"read_at,omitempty"`
+	// InsertedAt is the ISO-8601 timestamp the item was created.
+	InsertedAt *string `json:"inserted_at,omitempty"`
 }

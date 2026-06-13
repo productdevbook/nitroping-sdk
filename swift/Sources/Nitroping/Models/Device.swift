@@ -62,6 +62,10 @@ public struct DeviceRegistration: Codable, Equatable, Sendable {
     /// routes to the matching Apple host. Ignored for non-iOS platforms.
     public let environment: APNSEnvironment?
 
+    /// IANA timezone for this device (e.g. `"Europe/Istanbul"`). Used for
+    /// timezone-aware scheduled / recurring sends. Optional.
+    public let timezone: String?
+
     public init(
         platform: DevicePlatform,
         token: String,
@@ -70,7 +74,8 @@ public struct DeviceRegistration: Codable, Equatable, Sendable {
         webPushAuth: String? = nil,
         metadata: [String: String]? = nil,
         tags: [String]? = nil,
-        environment: APNSEnvironment? = nil
+        environment: APNSEnvironment? = nil,
+        timezone: String? = nil
     ) {
         self.platform = platform
         self.token = token
@@ -80,6 +85,7 @@ public struct DeviceRegistration: Codable, Equatable, Sendable {
         self.metadata = metadata
         self.tags = tags
         self.environment = environment
+        self.timezone = timezone
     }
 
     enum CodingKeys: String, CodingKey {
@@ -91,6 +97,7 @@ public struct DeviceRegistration: Codable, Equatable, Sendable {
         case metadata
         case tags
         case environment
+        case timezone
     }
 }
 

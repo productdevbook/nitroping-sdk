@@ -160,6 +160,70 @@ def test_send_target_tags(mock_urlopen):
     assert mock_urlopen.calls[0].body_json["target"] == {"tags": ["beta", "vip"]}
 
 
+def test_send_target_segment_defaults_match_all(mock_urlopen):
+    """target={'segment': {...}} without match → match defaults to 'all'."""
+    mock_urlopen.enqueue_json(201, {"id": "n1", "status": "queued"})
+
+    np = Nitroping(api_key="np_x")
+    np.notifications.send(
+        title="x",
+        body="y",
+        target={
+            "segment": {
+                "conditions": [
+                    {"field": "platform", "op": "eq", "value": "ios"}
+                ]
+            }
+        },
+    )
+
+    assert mock_urlopen.calls[0].body_json is not None
+    assert mock_urlopen.calls[0].body_json["target"] == {
+        "segment": {
+            "match": "all",
+            "conditions": [{"field": "platform", "op": "eq", "value": "ios"}],
+        }
+    }
+
+
+def test_send_target_segment_preserves_explicit_match(mock_urlopen):
+    """Explicit match='any' is preserved."""
+    mock_urlopen.enqueue_json(201, {"id": "n1", "status": "queued"})
+
+    np = Nitroping(api_key="np_x")
+    np.notifications.send(
+        title="x",
+        body="y",
+        target={"segment": {"match": "any", "conditions": []}},
+    )
+
+    assert mock_urlopen.calls[0].body_json["target"] == {
+        "segment": {"match": "any", "conditions": []}
+    }
+
+
+def test_send_forwards_recurrence_and_email_to(mock_urlopen):
+    """recurrence/recurrence_tz/recurrence_until/email_to land snake_case."""
+    mock_urlopen.enqueue_json(201, {"id": "n1", "status": "queued"})
+
+    np = Nitroping(api_key="np_x")
+    np.notifications.send(
+        title="x",
+        body="y",
+        target={"all": True},
+        recurrence="0 9 * * 1",
+        recurrence_tz="Europe/Istanbul",
+        recurrence_until="2026-12-31T00:00:00Z",
+        email_to=["a@example.com", "b@example.com"],
+    )
+
+    body = mock_urlopen.calls[0].body_json
+    assert body["recurrence"] == "0 9 * * 1"
+    assert body["recurrence_tz"] == "Europe/Istanbul"
+    assert body["recurrence_until"] == "2026-12-31T00:00:00Z"
+    assert body["email_to"] == ["a@example.com", "b@example.com"]
+
+
 def test_cancel_sends_delete(mock_urlopen):
     """np.notifications.cancel(id) → DELETE /api/v1/notifications/<id>."""
     mock_urlopen.enqueue_json(200, {"id": "n1", "status": "canceled"})

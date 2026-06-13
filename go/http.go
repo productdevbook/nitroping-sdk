@@ -34,6 +34,19 @@ type transport struct {
 	authScheme string
 	userAgent  string
 	httpClient *http.Client
+	// debug, when non-nil, receives a structured event map on each
+	// request, response, and transport error. The Authorization header /
+	// API key is always redacted before the event is emitted.
+	debug func(event map[string]any)
+}
+
+// emitDebug forwards a structured event to the configured debug logger
+// (if any). It is a no-op when debug is nil, which is the default.
+func (t *transport) emitDebug(event map[string]any) {
+	if t.debug == nil {
+		return
+	}
+	t.debug(event)
 }
 
 // do issues an HTTP request to the nitroping API and decodes the JSON
@@ -93,16 +106,47 @@ func (t *transport) do(
 		req.Header.Set(k, v)
 	}
 
+	t.emitDebug(map[string]any{
+		"phase":  "request",
+		"method": method,
+		"url":    endpoint,
+		// Authorization is intentionally not included — never log the
+		// API key. We surface only the scheme so callers can tell which
+		// auth mode was used without leaking the secret.
+		"auth_scheme":   t.authScheme,
+		"authorization": "[REDACTED]",
+	})
+
 	resp, err := t.httpClient.Do(req)
 	if err != nil {
+		t.emitDebug(map[string]any{
+			"phase":  "error",
+			"method": method,
+			"url":    endpoint,
+			"error":  err.Error(),
+		})
 		return fmt.Errorf("nitroping: %s %s: %w", method, endpoint, err)
 	}
 	defer resp.Body.Close()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
+		t.emitDebug(map[string]any{
+			"phase":  "error",
+			"method": method,
+			"url":    endpoint,
+			"status": resp.StatusCode,
+			"error":  err.Error(),
+		})
 		return fmt.Errorf("nitroping: read response body: %w", err)
 	}
+
+	t.emitDebug(map[string]any{
+		"phase":  "response",
+		"method": method,
+		"url":    endpoint,
+		"status": resp.StatusCode,
+	})
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return decodeAPIError(resp.StatusCode, respBytes)

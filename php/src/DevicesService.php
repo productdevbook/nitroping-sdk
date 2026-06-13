@@ -41,6 +41,10 @@ final class DevicesService
      * the APNs host is environment-specific and a token can't reveal which,
      * so it must be reported. Ignored for non-iOS platforms.
      *
+     * Pass `timezone` (an IANA timezone, e.g. `'Europe/Istanbul'`) to enable
+     * quiet-hours delivery — sends inside the app's quiet window are deferred
+     * to the window's end in the device's local time.
+     *
      * @param array<string, mixed>|null $metadata
      * @param list<string>|null         $tags
      *
@@ -55,6 +59,7 @@ final class DevicesService
         ?array $metadata = null,
         ?array $tags = null,
         ?string $environment = null,
+        ?string $timezone = null,
     ): array {
         $payload = [
             'platform' => $platform,
@@ -77,6 +82,9 @@ final class DevicesService
         }
         if ($environment !== null) {
             $payload['environment'] = $environment;
+        }
+        if ($timezone !== null) {
+            $payload['timezone'] = $timezone;
         }
 
         $isPublic = $this->transport instanceof \Productdevbook\Nitroping\Internal\CurlTransport

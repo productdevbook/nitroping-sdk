@@ -134,6 +134,88 @@ final class NotificationsServiceTest extends TestCase
         self::assertSame(['tags' => ['vip', 'beta']], $body['target']);
     }
 
+    public function testSendForwardsRecurrenceAndEmailToAsSnakeCase(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['id' => 'n1', 'status' => 'queued']);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+
+        $np->notifications->send(
+            title: 'Daily digest',
+            body: 'Here is your update',
+            target: ['all' => true],
+            recurrence: '0 9 * * *',
+            recurrenceTz: 'Europe/Istanbul',
+            recurrenceUntil: '2026-12-31T00:00:00Z',
+            emailTo: ['a@example.com', 'b@example.com'],
+        );
+
+        $body = $mock->calls[0]['body'];
+        self::assertNotNull($body);
+        self::assertSame('0 9 * * *', $body['recurrence']);
+        self::assertSame('Europe/Istanbul', $body['recurrence_tz']);
+        self::assertSame('2026-12-31T00:00:00Z', $body['recurrence_until']);
+        self::assertSame(['a@example.com', 'b@example.com'], $body['email_to']);
+    }
+
+    public function testSendConvertsSegmentTargetToSnakeCase(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['id' => 'n1', 'status' => 'queued']);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+
+        $np->notifications->send(
+            title: 'x',
+            body: 'y',
+            target: ['segment' => [
+                'match' => 'any',
+                'conditions' => [
+                    ['field' => 'platform', 'op' => 'eq', 'value' => 'ios'],
+                    ['field' => 'tag', 'op' => 'contains', 'value' => 'vip'],
+                ],
+            ]],
+        );
+
+        $body = $mock->calls[0]['body'];
+        self::assertNotNull($body);
+        self::assertSame([
+            'segment' => [
+                'match' => 'any',
+                'conditions' => [
+                    ['field' => 'platform', 'op' => 'eq', 'value' => 'ios'],
+                    ['field' => 'tag', 'op' => 'contains', 'value' => 'vip'],
+                ],
+            ],
+        ], $body['target']);
+    }
+
+    public function testSegmentFactoryDefaultsMatchToAll(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['id' => 'n1', 'status' => 'queued']);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+
+        $np->notifications->send(
+            title: 'x',
+            body: 'y',
+            target: \Productdevbook\Nitroping\NotificationsService::segment(
+                conditions: [['field' => 'user_id', 'op' => 'exists']],
+            ),
+        );
+
+        $body = $mock->calls[0]['body'];
+        self::assertNotNull($body);
+        self::assertSame([
+            'segment' => [
+                'match' => 'all',
+                'conditions' => [['field' => 'user_id', 'op' => 'exists']],
+            ],
+        ], $body['target']);
+    }
+
     public function testCancelSendsDelete(): void
     {
         $mock = new MockTransport();

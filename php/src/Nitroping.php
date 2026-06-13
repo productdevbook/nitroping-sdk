@@ -43,6 +43,9 @@ final class Nitroping
     /** `events` resource — record delivery/open/click telemetry. */
     public readonly EventsService $events;
 
+    /** `inbox` resource — list/read in-app notification-center items. */
+    public readonly InboxService $inbox;
+
     /** `track` resource — server-side delivery/open/click callbacks. */
     public readonly TrackService $track;
 
@@ -59,12 +62,21 @@ final class Nitroping
      *   Inject a custom transport (mocks, alternative HTTP clients,
      *   etc.). When `null`, the default ext-curl transport is built
      *   from the other arguments.
+     * @param bool|(callable(array<string, mixed>): void) $debug
+     *   Opt-in request/response debug logging (off by default). `true`
+     *   writes a redacted JSON line per HTTP event via `error_log()`; a
+     *   `callable(array $event): void` receives each event array instead —
+     *   each carries at least `['phase' => 'request'|'response'|'error',
+     *   'method' => string, 'url' => string]`. The `Authorization` header /
+     *   API key is always redacted. Ignored when a custom `$transport` is
+     *   injected (wire debug into your own transport in that case).
      */
     public function __construct(
         ?string $apiKey = null,
         string $baseUrl = CurlTransport::DEFAULT_BASE_URL,
         int $timeoutSeconds = 30,
         ?HttpTransport $transport = null,
+        bool|callable $debug = false,
     ) {
         if ($transport === null) {
             $key = $apiKey ?? self::readEnv('NITROPING_API_KEY');
@@ -78,6 +90,7 @@ final class Nitroping
                 apiKey: $key,
                 baseUrl: $baseUrl,
                 timeoutSeconds: $timeoutSeconds,
+                debug: $debug,
             );
         }
 
@@ -85,6 +98,7 @@ final class Nitroping
         $this->notifications = new NotificationsService($transport);
         $this->devices = new DevicesService($transport);
         $this->events = new EventsService($transport);
+        $this->inbox = new InboxService($transport);
         $this->track = new TrackService($transport);
     }
 

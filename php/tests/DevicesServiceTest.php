@@ -77,6 +77,26 @@ final class DevicesServiceTest extends TestCase
         self::assertSame(['vip', 'beta'], $body['tags']);
     }
 
+    public function testRegisterForwardsTimezone(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['id' => 'dev-4', 'created' => true]);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+
+        $np->devices->register(
+            platform: 'ios',
+            token: 'apns-token',
+            environment: 'production',
+            timezone: 'Europe/Istanbul',
+        );
+
+        $body = $mock->calls[0]['body'];
+        self::assertNotNull($body);
+        self::assertSame('production', $body['environment']);
+        self::assertSame('Europe/Istanbul', $body['timezone']);
+    }
+
     public function testUpdateSendsPutWithTags(): void
     {
         $mock = new MockTransport();

@@ -28,6 +28,23 @@ public protocol NitropingURLSession: Sendable {
 
 extension URLSession: NitropingURLSession {}
 
+/// Opt-in debug event emitted by the transport around each request. The
+/// API key / Authorization header is **never** included in any case — only
+/// method, URL, status, timing, and error description are exposed.
+public enum NitropingDebugEvent: Sendable {
+    /// A request is about to be sent.
+    case request(method: String, url: String)
+    /// A response came back. `ms` is the elapsed wall-clock time.
+    case response(method: String, url: String, status: Int, ms: Double)
+    /// The request failed before producing an HTTP response (transport
+    /// error). `error` is a description string — never the API key.
+    case failure(method: String, url: String, error: String)
+}
+
+/// Sink for `NitropingDebugEvent`s. `@Sendable` so it can be stored on the
+/// `Sendable` transport and called from any task.
+public typealias NitropingDebugHandler = @Sendable (NitropingDebugEvent) -> Void
+
 /// Internal HTTP wrapper. One per `NitropingClient`.
 struct HTTPTransport: Sendable {
     let baseURL: URL
@@ -36,14 +53,22 @@ struct HTTPTransport: Sendable {
     let session: NitropingURLSession
     let userAgent: String
     let logger: Logger
+    let debug: NitropingDebugHandler?
 
-    init(baseURL: URL, apiKey: String, session: NitropingURLSession, userAgent: String) {
+    init(
+        baseURL: URL,
+        apiKey: String,
+        session: NitropingURLSession,
+        userAgent: String,
+        debug: NitropingDebugHandler? = nil
+    ) {
         self.baseURL = baseURL
         self.apiKey = apiKey
         self.authScheme = apiKey.hasPrefix("pk_") ? "Public" : "ApiKey"
         self.session = session
         self.userAgent = userAgent
         self.logger = Logger(subsystem: "dev.nitroping.sdk", category: "http")
+        self.debug = debug
     }
 
     /// Encode-and-send a body.
@@ -51,13 +76,15 @@ struct HTTPTransport: Sendable {
         method: HTTPMethod,
         path: String,
         body: Body,
-        idempotencyKey: String? = nil
+        idempotencyKey: String? = nil,
+        queryItems: [URLQueryItem]? = nil
     ) async throws -> Response {
         let data = try await sendRaw(
             method: method,
             path: path,
             body: body,
-            idempotencyKey: idempotencyKey
+            idempotencyKey: idempotencyKey,
+            queryItems: queryItems
         )
         if Response.self == EmptyResponse.self {
             // Caller doesn't care about the body — short-circuit to avoid
@@ -77,13 +104,15 @@ struct HTTPTransport: Sendable {
     func send<Response: Decodable>(
         method: HTTPMethod,
         path: String,
-        idempotencyKey: String? = nil
+        idempotencyKey: String? = nil,
+        queryItems: [URLQueryItem]? = nil
     ) async throws -> Response {
         try await send(
             method: method,
             path: path,
             body: EmptyBody(),
-            idempotencyKey: idempotencyKey
+            idempotencyKey: idempotencyKey,
+            queryItems: queryItems
         )
     }
 
@@ -93,9 +122,10 @@ struct HTTPTransport: Sendable {
         method: HTTPMethod,
         path: String,
         body: Body,
-        idempotencyKey: String? = nil
+        idempotencyKey: String? = nil,
+        queryItems: [URLQueryItem]? = nil
     ) async throws -> Data {
-        let url = Self.makeURL(base: baseURL, path: path)
+        let url = Self.makeURL(base: baseURL, path: path, queryItems: queryItems)
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.setValue("\(authScheme) \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -115,17 +145,28 @@ struct HTTPTransport: Sendable {
             }
         }
 
+        // Debug never carries the Authorization header / API key — only the
+        // method + URL (the URL may contain query items, never the key).
+        let urlString = url.absoluteString
+        debug?(.request(method: method.rawValue, url: urlString))
+        let started = Date()
+
         let data: Data
         let response: URLResponse
         do {
             (data, response) = try await session.data(for: request)
         } catch {
+            debug?(.failure(method: method.rawValue, url: urlString, error: String(describing: error)))
             throw NitropingError.transport(String(describing: error))
         }
 
         guard let http = response as? HTTPURLResponse else {
+            debug?(.failure(method: method.rawValue, url: urlString, error: "Non-HTTP response"))
             throw NitropingError.transport("Non-HTTP response from \(url.absoluteString)")
         }
+
+        let elapsedMs = Date().timeIntervalSince(started) * 1000
+        debug?(.response(method: method.rawValue, url: urlString, status: http.statusCode, ms: elapsedMs))
 
         if (200..<300).contains(http.statusCode) {
             return data
@@ -134,15 +175,21 @@ struct HTTPTransport: Sendable {
         throw mapErrorResponse(status: http.statusCode, headers: http.allHeaderFields, body: data)
     }
 
-    /// Join a base URL + path that may or may not begin with `/`. Uses
-    /// string concatenation rather than `URL.appendingPathComponent` to
-    /// avoid the latter's tendency to percent-encode forward slashes on
-    /// some Foundation builds.
-    static func makeURL(base: URL, path: String) -> URL {
+    /// Join a base URL + path that may or may not begin with `/`, appending
+    /// any query items. Uses string concatenation for the path rather than
+    /// `URL.appendingPathComponent` to avoid the latter's tendency to
+    /// percent-encode forward slashes on some Foundation builds.
+    static func makeURL(base: URL, path: String, queryItems: [URLQueryItem]? = nil) -> URL {
         var baseString = base.absoluteString
         if baseString.hasSuffix("/") { baseString.removeLast() }
         let normalisedPath = path.hasPrefix("/") ? path : "/" + path
-        return URL(string: baseString + normalisedPath) ?? base
+        let url = URL(string: baseString + normalisedPath) ?? base
+        guard let queryItems, !queryItems.isEmpty else { return url }
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return url
+        }
+        components.queryItems = queryItems
+        return components.url ?? url
     }
 
     /// Translate a non-2xx response into the right `NitropingError` case.

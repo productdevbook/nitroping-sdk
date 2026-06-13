@@ -26,15 +26,37 @@ final class CurlTransport implements HttpTransport
 
     public readonly string $resolvedAuthScheme;
 
+    /** @var (callable(array<string, mixed>): void)|null */
+    private $debugSink;
+
+    /**
+     * @param bool|(callable(array<string, mixed>): void) $debug
+     *   Opt-in request/response logging. `false` (default) disables it;
+     *   `true` writes a redacted JSON line per event via `error_log()`; a
+     *   `callable(array $event): void` receives each event array instead.
+     *   The `Authorization` header / API key is always redacted.
+     */
     public function __construct(
         private readonly string $apiKey,
         string $baseUrl = self::DEFAULT_BASE_URL,
         private readonly int $timeoutSeconds = 30,
         ?string $authScheme = null,
         private readonly string $userAgent = 'nitroping-php/' . self::SDK_VERSION,
+        bool|callable $debug = false,
     ) {
         $this->baseUrl = rtrim($baseUrl, '/');
         $this->resolvedAuthScheme = $authScheme ?? (str_starts_with($this->apiKey, 'pk_') ? 'Public' : 'ApiKey');
+
+        if ($debug === true) {
+            $this->debugSink = static function (array $event): void {
+                $line = json_encode($event, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                error_log('[nitroping] ' . ($line === false ? '{}' : $line));
+            };
+        } elseif ($debug === false) {
+            $this->debugSink = null;
+        } else {
+            $this->debugSink = $debug;
+        }
     }
 
     /**
@@ -70,6 +92,14 @@ final class CurlTransport implements HttpTransport
             $requestHeaders[] = $name . ': ' . $value;
         }
 
+        $this->emit([
+            'phase' => 'request',
+            'method' => $method,
+            'url' => $url,
+            'headers' => self::redactHeaders($requestHeaders),
+            'body' => $bodyText,
+        ]);
+
         $ch = curl_init();
         if ($ch === false) {
             throw new NetworkException('Failed to initialize cURL handle');
@@ -92,6 +122,13 @@ final class CurlTransport implements HttpTransport
             $errno = curl_errno($ch);
             $error = curl_error($ch);
             curl_close($ch);
+            $this->emit([
+                'phase' => 'error',
+                'method' => $method,
+                'url' => $url,
+                'errno' => $errno,
+                'error' => $error,
+            ]);
             throw new NetworkException(
                 sprintf('Request to %s failed: %s (cURL errno %d)', $url, $error, $errno),
             );
@@ -101,7 +138,48 @@ final class CurlTransport implements HttpTransport
         $status = is_int($statusValue) ? $statusValue : 0;
         curl_close($ch);
 
+        $this->emit([
+            'phase' => 'response',
+            'method' => $method,
+            'url' => $url,
+            'status' => $status,
+            'body' => $rawResponse,
+        ]);
+
         return $this->parseResponse($status, $rawResponse);
+    }
+
+    /**
+     * Dispatch a debug event to the configured sink (no-op when disabled).
+     *
+     * @param array<string, mixed> $event
+     */
+    private function emit(array $event): void
+    {
+        if ($this->debugSink !== null) {
+            ($this->debugSink)($event);
+        }
+    }
+
+    /**
+     * Redact the `Authorization` header so secrets never reach the debug log.
+     *
+     * @param list<string> $headers
+     *
+     * @return list<string>
+     */
+    private static function redactHeaders(array $headers): array
+    {
+        $redacted = [];
+        foreach ($headers as $header) {
+            if (stripos($header, 'Authorization:') === 0) {
+                $redacted[] = 'Authorization: [REDACTED]';
+            } else {
+                $redacted[] = $header;
+            }
+        }
+
+        return $redacted;
     }
 
     /**

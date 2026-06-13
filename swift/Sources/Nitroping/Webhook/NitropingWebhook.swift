@@ -213,7 +213,7 @@ struct AnyKey: CodingKey {
 
 /// Sum type for arbitrary JSON values. Useful for surfacing `extras` from
 /// a webhook event without forcing the caller into `[String: Any]`.
-public enum AnyJSONValue: Decodable, Equatable, Sendable {
+public enum AnyJSONValue: Codable, Equatable, Sendable {
     case null
     case bool(Bool)
     case int(Int)
@@ -232,5 +232,25 @@ public enum AnyJSONValue: Decodable, Equatable, Sendable {
         if let v = try? container.decode([AnyJSONValue].self) { self = .array(v); return }
         if let v = try? container.decode([String: AnyJSONValue].self) { self = .object(v); return }
         self = .null
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .null:
+            try container.encodeNil()
+        case .bool(let v):
+            try container.encode(v)
+        case .int(let v):
+            try container.encode(v)
+        case .double(let v):
+            try container.encode(v)
+        case .string(let v):
+            try container.encode(v)
+        case .array(let v):
+            try container.encode(v)
+        case .object(let v):
+            try container.encode(v)
+        }
     }
 }

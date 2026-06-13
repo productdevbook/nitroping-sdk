@@ -92,6 +92,10 @@ public class Notifications internal constructor(private val transport: HttpTrans
         }
         input.scheduledAt?.let { wire["scheduled_at"] = it }
         input.expiresAt?.let { wire["expires_at"] = it }
+        input.recurrence?.let { wire["recurrence"] = it }
+        input.recurrenceTz?.let { wire["recurrence_tz"] = it }
+        input.recurrenceUntil?.let { wire["recurrence_until"] = it }
+        input.emailTo?.let { wire["email_to"] = it }
         wire["target"] = targetToWire(input.target)
         return wire
     }
@@ -101,6 +105,18 @@ public class Notifications internal constructor(private val transport: HttpTrans
         is Target.DeviceIds -> mapOf("device_ids" to target.ids)
         is Target.UserIds -> mapOf("user_ids" to target.ids)
         is Target.Tags -> mapOf("tags" to target.tags)
+        is Target.Segment -> mapOf(
+            "segment" to mapOf(
+                "match" to target.match,
+                "conditions" to target.conditions.map { c ->
+                    val m = LinkedHashMap<String, Any?>()
+                    m["field"] = c.field
+                    m["op"] = c.op
+                    if (c.value != null) m["value"] = c.value
+                    m
+                },
+            ),
+        )
     }
 
     private fun decodeResult(raw: Any?): NotificationResult {

@@ -36,6 +36,7 @@ class DevicesClient:
         metadata: dict[str, Any] | None = None,
         tags: list[str] | None = None,
         environment: str | None = None,
+        timezone: str | None = None,
     ) -> RegisterDeviceResult:
         """Register (or update) a device with the secret API key.
 
@@ -49,6 +50,9 @@ class DevicesClient:
         ``"production"``). The push host is environment-specific and a
         token can't reveal which, so report it for iOS devices; ignored
         for other platforms.
+
+        ``timezone`` is an IANA name (e.g. ``"Europe/Istanbul"``) used
+        for timezone-aware segment targeting and scheduling.
         """
         wire: dict[str, Any] = {"token": token, "platform": platform}
         if user_id is not None:
@@ -63,6 +67,8 @@ class DevicesClient:
             wire["tags"] = tags
         if environment is not None:
             wire["environment"] = environment
+        if timezone is not None:
+            wire["timezone"] = timezone
 
         path = "/api/v1/public/devices" if self._http.auth_scheme == "Public" else "/api/v1/devices"
         response = self._http.request("POST", path, body=wire)

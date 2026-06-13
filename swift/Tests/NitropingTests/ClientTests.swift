@@ -394,4 +394,284 @@ final class ClientTests: XCTestCase {
         XCTAssertEqual(req.url?.path, "/api/v1/public/devices")
         XCTAssertEqual(req.value(forHTTPHeaderField: "Authorization"), "Public pk_test_abcd")
     }
+
+    // MARK: - New notification fields (recurrence / email)
+
+    func testNotificationCreateEncodesRecurrenceAndEmail() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 201,
+            body: Data(#"{"id":"notif_3","status":"scheduled"}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makeClient()
+        _ = try await client.notifications.create(
+            .init(
+                title: "Daily",
+                body: "Standup",
+                target: .all,
+                recurrence: "0 9 * * *",
+                recurrenceTz: "Europe/Istanbul",
+                recurrenceUntil: "2026-12-31T00:00:00Z",
+                emailTo: ["a@example.com", "b@example.com"]
+            )
+        )
+
+        let bodyData = try XCTUnwrap(URLProtocolStub.lastBody)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+        XCTAssertEqual(json["recurrence"] as? String, "0 9 * * *")
+        XCTAssertEqual(json["recurrence_tz"] as? String, "Europe/Istanbul")
+        XCTAssertEqual(json["recurrence_until"] as? String, "2026-12-31T00:00:00Z")
+        XCTAssertEqual(json["email_to"] as? [String], ["a@example.com", "b@example.com"])
+    }
+
+    func testNotificationCreateOmitsNilRecurrence() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 201,
+            body: Data(#"{"id":"notif_4","status":"queued"}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makeClient()
+        _ = try await client.notifications.create(.init(title: "Hi", body: nil, target: .all))
+
+        let bodyData = try XCTUnwrap(URLProtocolStub.lastBody)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+        XCTAssertNil(json["recurrence"])
+        XCTAssertNil(json["recurrence_tz"])
+        XCTAssertNil(json["email_to"])
+    }
+
+    // MARK: - Segment target
+
+    func testNotificationCreateEncodesSegmentTarget() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 201,
+            body: Data(#"{"id":"notif_5","status":"queued"}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makeClient()
+        _ = try await client.notifications.create(
+            .init(
+                title: "Hi",
+                body: "Seg",
+                target: .segment(match: "any", conditions: [
+                    .equals("platform", "ios"),
+                    SegmentCondition(field: "tag", op: "in", value: .stringArray(["premium", "tr"])),
+                    .exists("user_id"),
+                ])
+            )
+        )
+
+        let bodyData = try XCTUnwrap(URLProtocolStub.lastBody)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+        let target = try XCTUnwrap(json["target"] as? [String: Any])
+        let segment = try XCTUnwrap(target["segment"] as? [String: Any])
+        XCTAssertEqual(segment["match"] as? String, "any")
+        let conditions = try XCTUnwrap(segment["conditions"] as? [[String: Any]])
+        XCTAssertEqual(conditions.count, 3)
+        XCTAssertEqual(conditions[0]["field"] as? String, "platform")
+        XCTAssertEqual(conditions[0]["op"] as? String, "eq")
+        XCTAssertEqual(conditions[0]["value"] as? String, "ios")
+        XCTAssertEqual(conditions[1]["value"] as? [String], ["premium", "tr"])
+        XCTAssertEqual(conditions[2]["op"] as? String, "exists")
+        XCTAssertNil(conditions[2]["value"])
+    }
+
+    func testSegmentConvenienceDefaultsToMatchAll() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 201,
+            body: Data(#"{"id":"notif_6","status":"queued"}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makeClient()
+        _ = try await client.notifications.create(
+            .init(title: "Hi", body: nil, target: .segment([.equals("platform", "web")]))
+        )
+
+        let bodyData = try XCTUnwrap(URLProtocolStub.lastBody)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+        let target = try XCTUnwrap(json["target"] as? [String: Any])
+        let segment = try XCTUnwrap(target["segment"] as? [String: Any])
+        XCTAssertEqual(segment["match"] as? String, "all")
+    }
+
+    // MARK: - Device timezone
+
+    func testDeviceRegisterIncludesTimezone() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 201,
+            body: Data(#"{"id":"dev_tz","created":true}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makeClient()
+        _ = try await client.devices.register(
+            .init(platform: .ios, token: "tok", timezone: "Europe/Istanbul")
+        )
+
+        let bodyData = try XCTUnwrap(URLProtocolStub.lastBody)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+        XCTAssertEqual(json["timezone"] as? String, "Europe/Istanbul")
+    }
+
+    // MARK: - Inbox
+
+    func testInboxListSendsQueryAndDecodes() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 200,
+            body: Data(#"""
+            {"items":[
+              {"id":"inb_1","notification_id":"notif_1","title":"Hi","body":"There","deep_link":"myapp://x","read":false,"read_at":null,"inserted_at":"2026-06-13T10:00:00Z","data":{"k":"v","n":3}},
+              {"id":"inb_2","notification_id":"notif_2","read":true,"read_at":"2026-06-13T11:00:00Z","inserted_at":"2026-06-13T09:00:00Z"}
+            ]}
+            """#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makePublicClient()
+        let items = try await client.inbox.list(userId: "user-42", unreadOnly: true, limit: 20)
+
+        XCTAssertEqual(items.count, 2)
+        XCTAssertEqual(items[0].id, "inb_1")
+        XCTAssertEqual(items[0].notificationId, "notif_1")
+        XCTAssertEqual(items[0].title, "Hi")
+        XCTAssertEqual(items[0].deepLink, "myapp://x")
+        XCTAssertFalse(items[0].read)
+        XCTAssertNil(items[0].readAt)
+        XCTAssertEqual(items[0].insertedAt, "2026-06-13T10:00:00Z")
+        XCTAssertEqual(items[0].data?["k"], .string("v"))
+        XCTAssertEqual(items[0].data?["n"], .int(3))
+        XCTAssertTrue(items[1].read)
+        XCTAssertNil(items[1].title)
+
+        let req = try XCTUnwrap(URLProtocolStub.lastRequest)
+        XCTAssertEqual(req.httpMethod, "GET")
+        XCTAssertEqual(req.url?.path, "/api/v1/public/inbox")
+        let components = try XCTUnwrap(URLComponents(url: try XCTUnwrap(req.url), resolvingAgainstBaseURL: false))
+        let queryItems = components.queryItems ?? []
+        func queryValue(_ name: String) -> String? {
+            queryItems.first { $0.name == name }?.value
+        }
+        XCTAssertEqual(queryValue("user_id"), "user-42")
+        XCTAssertEqual(queryValue("unread_only"), "true")
+        XCTAssertEqual(queryValue("limit"), "20")
+    }
+
+    func testInboxUnreadCount() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 200,
+            body: Data(#"{"unread_count":7}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makePublicClient()
+        let count = try await client.inbox.unreadCount(userId: "user-42")
+        XCTAssertEqual(count, 7)
+
+        let req = try XCTUnwrap(URLProtocolStub.lastRequest)
+        XCTAssertEqual(req.url?.path, "/api/v1/public/inbox/unread_count")
+    }
+
+    func testInboxMarkRead() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 200,
+            body: Data(#"{"id":"inb_1","notification_id":"notif_1","read":true,"read_at":"2026-06-13T11:00:00Z"}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makePublicClient()
+        let item = try await client.inbox.markRead(userId: "user-42", itemId: "inb_1")
+        XCTAssertEqual(item.id, "inb_1")
+        XCTAssertTrue(item.read)
+
+        let req = try XCTUnwrap(URLProtocolStub.lastRequest)
+        XCTAssertEqual(req.httpMethod, "POST")
+        XCTAssertEqual(req.url?.path, "/api/v1/public/inbox/inb_1/read")
+        let bodyData = try XCTUnwrap(URLProtocolStub.lastBody)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+        XCTAssertEqual(json["user_id"] as? String, "user-42")
+    }
+
+    func testInboxMarkAllRead() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 200,
+            body: Data(#"{"marked_read":4}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makePublicClient()
+        let n = try await client.inbox.markAllRead(userId: "user-42")
+        XCTAssertEqual(n, 4)
+
+        let req = try XCTUnwrap(URLProtocolStub.lastRequest)
+        XCTAssertEqual(req.httpMethod, "POST")
+        XCTAssertEqual(req.url?.path, "/api/v1/public/inbox/read_all")
+    }
+
+    func testInboxEmptyUserIdFailsLocally() async throws {
+        let client = makePublicClient()
+        do {
+            _ = try await client.inbox.unreadCount(userId: "")
+            XCTFail("expected throw")
+        } catch let NitropingError.validation(message) {
+            XCTAssertTrue(message.contains("userId"))
+        }
+        XCTAssertNil(URLProtocolStub.lastRequest)
+    }
+
+    // MARK: - Debug logging
+
+    func testDebugHandlerReceivesRequestAndResponseWithoutApiKey() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 201,
+            body: Data(#"{"id":"dev_xyz","created":true}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let collector = DebugCollector()
+        let session = URLProtocolStub.makeSession()
+        let client = NitropingClient(
+            apiKey: "np_test_secret_key",
+            baseURL: baseURL,
+            session: session,
+            debug: { event in collector.append(event) }
+        )
+        _ = try await client.devices.register(.init(platform: .ios, token: "tok"))
+
+        let events = collector.events
+        XCTAssertTrue(events.contains { if case .request = $0 { return true } else { return false } })
+        XCTAssertTrue(events.contains { if case .response = $0 { return true } else { return false } })
+
+        // The API key must never appear in any emitted event.
+        for event in events {
+            switch event {
+            case .request(let method, let url):
+                XCTAssertEqual(method, "POST")
+                XCTAssertFalse(url.contains("np_test_secret_key"))
+            case .response(_, let url, let status, _):
+                XCTAssertEqual(status, 201)
+                XCTAssertFalse(url.contains("np_test_secret_key"))
+            case .failure(_, let url, let error):
+                XCTAssertFalse(url.contains("np_test_secret_key"))
+                XCTAssertFalse(error.contains("np_test_secret_key"))
+            }
+        }
+    }
+}
+
+/// Thread-safe collector for debug events used by `testDebugHandler...`.
+private final class DebugCollector: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _events: [NitropingDebugEvent] = []
+    func append(_ event: NitropingDebugEvent) {
+        lock.lock(); defer { lock.unlock() }
+        _events.append(event)
+    }
+    var events: [NitropingDebugEvent] {
+        lock.lock(); defer { lock.unlock() }
+        return _events
+    }
 }

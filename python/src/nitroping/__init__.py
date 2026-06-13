@@ -22,7 +22,8 @@ from __future__ import annotations
 from ._client import AsyncNitroping, Nitroping
 from ._devices import DevicesClient
 from ._events import EventsClient
-from ._http import DEFAULT_BASE_URL, HttpClient
+from ._http import DEFAULT_BASE_URL, DebugLogger, HttpClient
+from ._inbox import InboxClient
 from ._notifications import NotificationsClient
 from ._track import TrackClient
 from .errors import (
@@ -43,9 +44,13 @@ from .types import (
     Platform,
     RegisterDeviceResult,
     ReportEventResult,
+    Segment,
+    SegmentCondition,
+    SegmentOp,
     SendOptions,
     TargetAll,
     TargetDeviceIds,
+    TargetSegment,
     TargetTags,
     TargetUserIds,
     TrackEvent,
@@ -62,10 +67,12 @@ __all__ = [
     "AsyncNitroping",
     "CancelNotificationResult",
     "DeactivateDeviceResult",
+    "DebugLogger",
     "DevicesClient",
     "EngagementEvent",
     "EventsClient",
     "HttpClient",
+    "InboxClient",
     "InvalidSignatureError",
     "MissingSignatureHeaderError",
     "NetworkError",
@@ -78,9 +85,13 @@ __all__ = [
     "Platform",
     "RegisterDeviceResult",
     "ReportEventResult",
+    "Segment",
+    "SegmentCondition",
+    "SegmentOp",
     "SendOptions",
     "TargetAll",
     "TargetDeviceIds",
+    "TargetSegment",
     "TargetTags",
     "TargetUserIds",
     "TimestampOutOfRangeError",

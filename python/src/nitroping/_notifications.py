@@ -18,6 +18,22 @@ from .types import (
 )
 
 
+def _target_to_wire(target: NotificationTarget) -> dict[str, Any]:
+    """Normalize a target selector for the wire.
+
+    The wire shape is the same snake_case dict the caller passes; the
+    only transform is defaulting a segment target's ``match`` to
+    ``"all"`` when the caller omits it.
+    """
+    wire = dict(target)
+    segment = wire.get("segment")
+    if isinstance(segment, dict):
+        normalized = dict(segment)
+        normalized.setdefault("match", "all")
+        wire["segment"] = normalized
+    return wire
+
+
 class NotificationsClient:
     """Send and inspect notifications."""
 
@@ -40,6 +56,10 @@ class NotificationsClient:
         actions: list[NotificationAction] | None = None,
         scheduled_at: str | None = None,
         expires_at: str | None = None,
+        recurrence: str | None = None,
+        recurrence_tz: str | None = None,
+        recurrence_until: str | None = None,
+        email_to: list[str] | None = None,
         idempotency_key: str | None = None,
     ) -> NotificationResult:
         """Enqueue a new notification.
@@ -47,12 +67,16 @@ class NotificationsClient:
         Either ``title + body`` (raw payload) or ``template + vars``
         (Pro plan). Mixing the two is a 422.
 
+        ``recurrence`` (a 5-field cron string) with optional
+        ``recurrence_tz`` and ``recurrence_until`` schedules a repeating
+        send. ``email_to`` adds email recipients for the notification.
+
         Returns ``{"id": ..., "status": ...}`` on ``201 Created``. On
         non-2xx the SDK raises :class:`~nitroping.errors.ApiError`
         carrying the server's ``code``, ``message``, and (for validation
         failures) the per-field ``details`` map.
         """
-        wire: dict[str, Any] = {"target": dict(target)}
+        wire: dict[str, Any] = {"target": _target_to_wire(target)}
         if title is not None:
             wire["title"] = title
         if body is not None:
@@ -77,6 +101,14 @@ class NotificationsClient:
             wire["scheduled_at"] = scheduled_at
         if expires_at is not None:
             wire["expires_at"] = expires_at
+        if recurrence is not None:
+            wire["recurrence"] = recurrence
+        if recurrence_tz is not None:
+            wire["recurrence_tz"] = recurrence_tz
+        if recurrence_until is not None:
+            wire["recurrence_until"] = recurrence_until
+        if email_to is not None:
+            wire["email_to"] = email_to
 
         headers: dict[str, str] = {}
         if idempotency_key is not None:

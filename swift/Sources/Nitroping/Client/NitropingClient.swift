@@ -36,9 +36,10 @@ public final class NitropingClient: Sendable {
     public static func configure(
         apiKey: String,
         baseURL: URL = NitropingSDK.defaultBaseURL,
-        session: NitropingURLSession = URLSession.shared
+        session: NitropingURLSession = URLSession.shared,
+        debug: NitropingDebugHandler? = nil
     ) {
-        _shared.value = NitropingClient(apiKey: apiKey, baseURL: baseURL, session: session)
+        _shared.value = NitropingClient(apiKey: apiKey, baseURL: baseURL, session: session, debug: debug)
     }
 
     private static let _shared = SharedBox()
@@ -60,13 +61,22 @@ public final class NitropingClient: Sendable {
     /// Public, unauthenticated endpoints (VAPID key fetch).
     public let publicApi: PublicAPI
 
+    /// In-app notification-center (inbox) endpoints. Authenticate with a
+    /// public (`pk_`) key on behalf of a signed-in end user.
+    public let inbox: Inbox
+
     private let transport: HTTPTransport
 
     /// Designated initializer.
+    ///
+    /// - Parameter debug: opt-in sink for `NitropingDebugEvent`s emitted
+    ///   around each request. The API key / Authorization header is never
+    ///   included in any event. `nil` (the default) disables logging.
     public init(
         apiKey: String,
         baseURL: URL = NitropingSDK.defaultBaseURL,
-        session: NitropingURLSession = URLSession.shared
+        session: NitropingURLSession = URLSession.shared,
+        debug: NitropingDebugHandler? = nil
     ) {
         precondition(!apiKey.isEmpty, "Nitroping API key must not be empty")
         let userAgent = "nitroping-swift/\(NitropingSDK.version) (\(platformTag()))"
@@ -74,7 +84,8 @@ public final class NitropingClient: Sendable {
             baseURL: baseURL,
             apiKey: apiKey,
             session: session,
-            userAgent: userAgent
+            userAgent: userAgent,
+            debug: debug
         )
         self.transport = transport
         self.devices = Devices(transport: transport)
@@ -82,6 +93,7 @@ public final class NitropingClient: Sendable {
         self.notifications = Notifications(transport: transport)
         self.track = Track(transport: transport)
         self.publicApi = PublicAPI(transport: transport)
+        self.inbox = Inbox(transport: transport)
     }
 
     // MARK: - Subclient declarations
@@ -116,6 +128,12 @@ public final class NitropingClient: Sendable {
 
     /// Public (unauthenticated) endpoints subclient.
     public final class PublicAPI: Sendable {
+        let transport: HTTPTransport
+        init(transport: HTTPTransport) { self.transport = transport }
+    }
+
+    /// In-app notification-center (inbox) subclient.
+    public final class Inbox: Sendable {
         let transport: HTTPTransport
         init(transport: HTTPTransport) { self.transport = transport }
     }

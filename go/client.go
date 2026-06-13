@@ -31,6 +31,12 @@ type ClientOptions struct {
 	// UserAgent overrides the default `nitroping-go/<ver>` User-Agent
 	// header. Set to "" to disable the header entirely.
 	UserAgent string
+
+	// Debug, when non-nil, is invoked with a structured event map on each
+	// request, response, and transport error. Off by default. The
+	// Authorization header / API key is always redacted before the event
+	// is emitted. Build one with WithDebug or WithDebugLogging.
+	Debug func(event map[string]any)
 }
 
 // Client is the top-level entry point of the SDK. Use NewClient to
@@ -50,6 +56,9 @@ type Client struct {
 	Track *TrackService
 	// Events wraps POST /api/v1/events — the public engagement endpoint.
 	Events *EventsService
+	// Inbox wraps the /api/v1/public/inbox endpoints — the in-app
+	// notification center.
+	Inbox *InboxService
 
 	transport *transport
 }
@@ -101,6 +110,7 @@ func NewClient(opts ClientOptions) (*Client, error) {
 		authScheme: authScheme,
 		userAgent:  userAgent,
 		httpClient: httpClient,
+		debug:      opts.Debug,
 	}
 
 	return &Client{
@@ -109,6 +119,7 @@ func NewClient(opts ClientOptions) (*Client, error) {
 		Devices:       &DevicesService{transport: tr},
 		Track:         &TrackService{transport: tr},
 		Events:        &EventsService{transport: tr},
+		Inbox:         &InboxService{transport: tr},
 	}, nil
 }
 

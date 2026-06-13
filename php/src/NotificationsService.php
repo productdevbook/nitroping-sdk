@@ -32,6 +32,7 @@ final class NotificationsService
      *   - `['deviceIds' => ['d1', 'd2', ...]]`
      *   - `['userIds'   => ['u1', 'u2', ...]]`
      *   - `['tags'      => ['t1', 't2', ...]]`
+     *   - `['segment'   => ['match' => 'all'|'any', 'conditions' => [['field' => ..., 'op' => ..., 'value' => ...], ...]]]`
      *
      * `actions` is a list of `['id' => string, 'title' => string, 'icon' => ?string]`.
      *
@@ -39,15 +40,26 @@ final class NotificationsService
      * cached response for the same key + body for 24 hours. Same key
      * with a different body yields a 409 (`idempotency_conflict`).
      *
+     * `recurrence` is a 5-field cron expression. When set, the notification
+     * becomes a recurring series: the server clones a one-shot occurrence on
+     * each tick (e.g. `"0 9 * * *"`). `recurrenceTz` is the IANA timezone the
+     * cron is evaluated in (default `Etc/UTC`); `recurrenceUntil` is an
+     * ISO-8601 timestamp after which the series stops.
+     *
+     * `emailTo` additionally delivers this notification as email to the given
+     * addresses (title → subject, body → content).
+     *
      * @param array{
      *   all?: bool,
      *   deviceIds?: list<string>,
      *   userIds?: list<string>,
      *   tags?: list<string>,
+     *   segment?: array{match?: string, conditions: list<array{field: string, op: string, value?: mixed}>},
      * } $target
      * @param list<array{id: string, title: string, icon?: string}>|null $actions
      * @param array<string, mixed>|null $vars
      * @param array<string, mixed>|null $data
+     * @param list<string>|null         $emailTo
      */
     public function send(
         array $target,
@@ -63,6 +75,10 @@ final class NotificationsService
         ?array $actions = null,
         ?string $scheduledAt = null,
         ?string $expiresAt = null,
+        ?string $recurrence = null,
+        ?string $recurrenceTz = null,
+        ?string $recurrenceUntil = null,
+        ?array $emailTo = null,
         ?string $idempotencyKey = null,
     ): NotificationResult {
         $payload = self::toWire(
@@ -79,6 +95,10 @@ final class NotificationsService
             actions: $actions,
             scheduledAt: $scheduledAt,
             expiresAt: $expiresAt,
+            recurrence: $recurrence,
+            recurrenceTz: $recurrenceTz,
+            recurrenceUntil: $recurrenceUntil,
+            emailTo: $emailTo,
         );
 
         $headers = [];
@@ -115,6 +135,10 @@ final class NotificationsService
             actions: $req->actions,
             scheduledAt: $req->scheduledAt,
             expiresAt: $req->expiresAt,
+            recurrence: $req->recurrence,
+            recurrenceTz: $req->recurrenceTz,
+            recurrenceUntil: $req->recurrenceUntil,
+            emailTo: $req->emailTo,
             idempotencyKey: $idempotencyKey,
         );
     }
@@ -160,10 +184,12 @@ final class NotificationsService
      *   deviceIds?: list<string>,
      *   userIds?: list<string>,
      *   tags?: list<string>,
+     *   segment?: array{match?: string, conditions: list<array{field: string, op: string, value?: mixed}>},
      * } $target
      * @param list<array{id: string, title: string, icon?: string}>|null $actions
      * @param array<string, mixed>|null $vars
      * @param array<string, mixed>|null $data
+     * @param list<string>|null         $emailTo
      *
      * @return array<string, mixed>
      */
@@ -181,6 +207,10 @@ final class NotificationsService
         ?array $actions,
         ?string $scheduledAt,
         ?string $expiresAt,
+        ?string $recurrence,
+        ?string $recurrenceTz,
+        ?string $recurrenceUntil,
+        ?array $emailTo,
     ): array {
         $wire = [];
         if ($title !== null) {
@@ -219,6 +249,18 @@ final class NotificationsService
         if ($expiresAt !== null) {
             $wire['expires_at'] = $expiresAt;
         }
+        if ($recurrence !== null) {
+            $wire['recurrence'] = $recurrence;
+        }
+        if ($recurrenceTz !== null) {
+            $wire['recurrence_tz'] = $recurrenceTz;
+        }
+        if ($recurrenceUntil !== null) {
+            $wire['recurrence_until'] = $recurrenceUntil;
+        }
+        if ($emailTo !== null) {
+            $wire['email_to'] = $emailTo;
+        }
         $wire['target'] = self::targetToWire($target);
 
         return $wire;
@@ -230,6 +272,7 @@ final class NotificationsService
      *   deviceIds?: list<string>,
      *   userIds?: list<string>,
      *   tags?: list<string>,
+     *   segment?: array{match?: string, conditions: list<array{field: string, op: string, value?: mixed}>},
      * } $target
      *
      * @return array<string, mixed>
@@ -248,9 +291,56 @@ final class NotificationsService
         if (array_key_exists('tags', $target)) {
             return ['tags' => $target['tags']];
         }
+        if (array_key_exists('segment', $target)) {
+            /** @var array{match?: string, conditions: list<array{field: string, op: string, value?: mixed}>} $segment */
+            $segment = $target['segment'];
+
+            return [
+                'segment' => [
+                    'match' => $segment['match'] ?? 'all',
+                    'conditions' => $segment['conditions'],
+                ],
+            ];
+        }
 
         // Unknown shape — pass through for forward compatibility.
         /** @var array<string, mixed> $target */
         return $target;
+    }
+
+    /**
+     * Build a `segment` target — match devices by a list of conditions.
+     *
+     * Mirrors the other target factories. Returns an array shaped for the
+     * `target` parameter of {@see send}:
+     *
+     * ```php
+     * $np->notifications->send(
+     *     title: 'Hi',
+     *     body: 'There',
+     *     target: NotificationsService::segment('any', [
+     *         ['field' => 'platform', 'op' => 'eq', 'value' => 'ios'],
+     *         ['field' => 'tag', 'op' => 'contains', 'value' => 'vip'],
+     *     ]),
+     * );
+     * ```
+     *
+     * `$match` is `'all'` (AND, default) or `'any'` (OR) over the conditions.
+     * Each condition is `['field' => string, 'op' => string, 'value' => mixed]`
+     * where `op` is one of `eq`, `neq`, `in`, `exists`, `contains`, `gt`, `lt`
+     * (`value` is omitted for `exists`).
+     *
+     * @param list<array{field: string, op: string, value?: mixed}> $conditions
+     *
+     * @return array{segment: array{match: string, conditions: list<array{field: string, op: string, value?: mixed}>}}
+     */
+    public static function segment(string $match = 'all', array $conditions = []): array
+    {
+        return [
+            'segment' => [
+                'match' => $match,
+                'conditions' => $conditions,
+            ],
+        ];
     }
 }

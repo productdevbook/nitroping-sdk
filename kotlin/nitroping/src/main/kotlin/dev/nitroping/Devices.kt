@@ -84,6 +84,7 @@ public class Devices internal constructor(private val transport: HttpTransport) 
         input.metadata?.let { wire["metadata"] = it }
         input.tags?.let { wire["tags"] = it }
         input.environment?.let { wire["environment"] = it }
+        input.timezone?.let { wire["timezone"] = it }
         return wire
     }
 

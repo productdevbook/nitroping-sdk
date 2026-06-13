@@ -8,7 +8,8 @@ from typing import Any
 
 from ._devices import DevicesClient
 from ._events import EventsClient
-from ._http import DEFAULT_BASE_URL, HttpClient
+from ._http import DEFAULT_BASE_URL, DebugLogger, HttpClient
+from ._inbox import InboxClient
 from ._notifications import NotificationsClient
 from ._track import TrackClient
 from .errors import NitropingError
@@ -52,6 +53,8 @@ class Nitroping:
     track: TrackClient
     #: ``events`` resource — public engagement events (``POST /events``).
     events: EventsClient
+    #: ``inbox`` resource — in-app notification center (``/public/inbox``).
+    inbox: InboxClient
     #: Internal HTTP client. Exposed for advanced use (custom requests).
     http: HttpClient
 
@@ -62,6 +65,7 @@ class Nitroping:
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = 30.0,
         user_agent: str | None = None,
+        debug: bool | DebugLogger | None = None,
     ) -> None:
         resolved_key = api_key if api_key is not None else os.environ.get(
             "NITROPING_API_KEY"
@@ -77,11 +81,13 @@ class Nitroping:
             base_url=base_url,
             timeout=timeout,
             user_agent=user_agent,
+            debug=debug,
         )
         self.notifications = NotificationsClient(self.http)
         self.devices = DevicesClient(self.http)
         self.track = TrackClient(self.http)
         self.events = EventsClient(self.http)
+        self.inbox = InboxClient(self.http)
 
 
 class _AsyncNotificationsClient:
@@ -113,6 +119,10 @@ class _AsyncNotificationsClient:
         actions: list[NotificationAction] | None = None,
         scheduled_at: str | None = None,
         expires_at: str | None = None,
+        recurrence: str | None = None,
+        recurrence_tz: str | None = None,
+        recurrence_until: str | None = None,
+        email_to: list[str] | None = None,
         idempotency_key: str | None = None,
     ) -> NotificationResult:
         loop = asyncio.get_running_loop()
@@ -132,6 +142,10 @@ class _AsyncNotificationsClient:
                 actions=actions,
                 scheduled_at=scheduled_at,
                 expires_at=expires_at,
+                recurrence=recurrence,
+                recurrence_tz=recurrence_tz,
+                recurrence_until=recurrence_until,
+                email_to=email_to,
                 idempotency_key=idempotency_key,
             ),
         )
@@ -165,6 +179,8 @@ class _AsyncDevicesClient:
         web_push_auth: str | None = None,
         metadata: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        environment: str | None = None,
+        timezone: str | None = None,
     ) -> RegisterDeviceResult:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
@@ -177,6 +193,8 @@ class _AsyncDevicesClient:
                 web_push_auth=web_push_auth,
                 metadata=metadata,
                 tags=tags,
+                environment=environment,
+                timezone=timezone,
             ),
         )
 
@@ -253,6 +271,46 @@ class _AsyncEventsClient:
         )
 
 
+class _AsyncInboxClient:
+    """Awaitable façade over :class:`InboxClient`."""
+
+    def __init__(self, inner: InboxClient) -> None:
+        self._inner = inner
+
+    async def list(
+        self,
+        user_id: str,
+        *,
+        unread_only: bool | None = None,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._inner.list(
+                user_id, unread_only=unread_only, limit=limit
+            ),
+        )
+
+    async def unread_count(self, user_id: str) -> int:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, self._inner.unread_count, user_id
+        )
+
+    async def mark_read(self, user_id: str, item_id: str) -> dict[str, Any]:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, self._inner.mark_read, user_id, item_id
+        )
+
+    async def mark_all_read(self, user_id: str) -> int:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, self._inner.mark_all_read, user_id
+        )
+
+
 class AsyncNitroping:
     """Async server-side SDK client.
 
@@ -270,6 +328,7 @@ class AsyncNitroping:
     devices: _AsyncDevicesClient
     track: _AsyncTrackClient
     events: _AsyncEventsClient
+    inbox: _AsyncInboxClient
 
     def __init__(
         self,
@@ -278,17 +337,20 @@ class AsyncNitroping:
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = 30.0,
         user_agent: str | None = None,
+        debug: bool | DebugLogger | None = None,
     ) -> None:
         self._sync = Nitroping(
             api_key=api_key,
             base_url=base_url,
             timeout=timeout,
             user_agent=user_agent,
+            debug=debug,
         )
         self.notifications = _AsyncNotificationsClient(self._sync.notifications)
         self.devices = _AsyncDevicesClient(self._sync.devices)
         self.track = _AsyncTrackClient(self._sync.track)
         self.events = _AsyncEventsClient(self._sync.events)
+        self.inbox = _AsyncInboxClient(self._sync.inbox)
 
     @property
     def http(self) -> HttpClient:

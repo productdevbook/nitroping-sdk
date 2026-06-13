@@ -358,3 +358,136 @@ func TestNotificationsSend_ContextCancelled(t *testing.T) {
 		t.Errorf("error should wrap context.Canceled, got %v", err)
 	}
 }
+
+func TestNotificationsSend_SegmentTarget(t *testing.T) {
+	var captured map[string]any
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"n1","status":"queued"}`))
+	})
+
+	_, err := client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		Title: "x",
+		Body:  "y",
+		Target: nitroping.Segment("any", []nitroping.SegmentCondition{
+			{Field: "platform", Op: "eq", Value: "ios"},
+			{Field: "tag", Op: "contains", Value: "vip"},
+		}),
+	})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	target, _ := captured["target"].(map[string]any)
+	seg, _ := target["segment"].(map[string]any)
+	if seg == nil {
+		t.Fatalf("body.target.segment missing: %v", captured["target"])
+	}
+	if seg["match"] != "any" {
+		t.Errorf("segment.match = %v, want any", seg["match"])
+	}
+	conds, _ := seg["conditions"].([]any)
+	if len(conds) != 2 {
+		t.Fatalf("segment.conditions len = %d, want 2", len(conds))
+	}
+	c0, _ := conds[0].(map[string]any)
+	if c0["field"] != "platform" || c0["op"] != "eq" || c0["value"] != "ios" {
+		t.Errorf("segment.conditions[0] = %v", c0)
+	}
+}
+
+func TestNotificationsSend_SegmentTargetDefaultMatch(t *testing.T) {
+	var captured map[string]any
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"n1","status":"queued"}`))
+	})
+
+	// match == "" should default to "all".
+	_, err := client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		Title:  "x",
+		Body:   "y",
+		Target: nitroping.Segment("", []nitroping.SegmentCondition{{Field: "user_id", Op: "exists"}}),
+	})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	target, _ := captured["target"].(map[string]any)
+	seg, _ := target["segment"].(map[string]any)
+	if seg == nil || seg["match"] != "all" {
+		t.Errorf("segment.match = %v, want all (default)", seg)
+	}
+	conds, _ := seg["conditions"].([]any)
+	c0, _ := conds[0].(map[string]any)
+	// `exists` op omits value entirely.
+	if _, ok := c0["value"]; ok {
+		t.Errorf("condition value should be omitted for exists op: %v", c0)
+	}
+}
+
+func TestNotificationsSend_RecurrenceAndEmailFields(t *testing.T) {
+	var captured map[string]any
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"n1","status":"queued"}`))
+	})
+
+	_, err := client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		Title:           "x",
+		Body:            "y",
+		Recurrence:      nitroping.String("0 9 * * *"),
+		RecurrenceTz:    nitroping.String("Europe/Istanbul"),
+		RecurrenceUntil: nitroping.String("2026-12-31T00:00:00Z"),
+		EmailTo:         []string{"a@example.com", "b@example.com"},
+		Target:          nitroping.AllDevices(),
+	})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if captured["recurrence"] != "0 9 * * *" {
+		t.Errorf("body.recurrence = %v", captured["recurrence"])
+	}
+	if captured["recurrence_tz"] != "Europe/Istanbul" {
+		t.Errorf("body.recurrence_tz = %v", captured["recurrence_tz"])
+	}
+	if captured["recurrence_until"] != "2026-12-31T00:00:00Z" {
+		t.Errorf("body.recurrence_until = %v", captured["recurrence_until"])
+	}
+	emails, _ := captured["email_to"].([]any)
+	if len(emails) != 2 || emails[0] != "a@example.com" {
+		t.Errorf("body.email_to = %v", captured["email_to"])
+	}
+}
+
+func TestNotificationsSend_RecurrenceFieldsOmittedWhenUnset(t *testing.T) {
+	var captured map[string]any
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"n1","status":"queued"}`))
+	})
+
+	_, err := client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		Title:  "x",
+		Body:   "y",
+		Target: nitroping.AllDevices(),
+	})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	for _, k := range []string{"recurrence", "recurrence_tz", "recurrence_until", "email_to"} {
+		if _, ok := captured[k]; ok {
+			t.Errorf("body should not include %q when unset", k)
+		}
+	}
+}
