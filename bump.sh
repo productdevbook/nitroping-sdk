@@ -129,8 +129,8 @@ git add -u \
     VERSION \
     js/package.json js/src/http.ts \
     react-native/package.json \
-    python/pyproject.toml python/src/nitroping/__init__.py \
-    kotlin/gradle.properties \
+    python/pyproject.toml python/src/nitroping/__init__.py python/src/nitroping/_http.py \
+    kotlin/gradle.properties kotlin/nitroping/src/main/kotlin/dev/nitroping/internal/HttpTransport.kt \
     go/http.go \
     swift/Sources/Nitroping/Nitroping.swift \
     php/src/Internal/CurlTransport.php

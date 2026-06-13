@@ -138,7 +138,7 @@ internal class HttpTransport(
     }
 
     internal companion object {
-        const val SDK_VERSION: String = "0.2.3"
+        const val SDK_VERSION: String = "0.2.4"
 
         private fun defaultClient(timeoutMs: Long): HttpClient =
             HttpClient.newBuilder()
