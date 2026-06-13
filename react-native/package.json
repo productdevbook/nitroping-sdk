@@ -39,6 +39,10 @@
     "./firebase": {
       "types": "./dist/firebase/index.d.mts",
       "default": "./dist/firebase/index.mjs"
+    },
+    "./expo": {
+      "types": "./dist/expo/index.d.mts",
+      "default": "./dist/expo/index.mjs"
     }
   },
   "publishConfig": {
@@ -73,11 +77,15 @@
   },
   "peerDependencies": {
     "@react-native-firebase/messaging": ">=18",
+    "expo-notifications": ">=0.27",
     "react": ">=18",
     "react-native": ">=0.74"
   },
   "peerDependenciesMeta": {
     "@react-native-firebase/messaging": {
+      "optional": true
+    },
+    "expo-notifications": {
       "optional": true
     }
   }

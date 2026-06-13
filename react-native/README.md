@@ -97,10 +97,18 @@ function useFcmToken() {
 
 ### `expo-notifications`
 
+Use the **native** device token — `getDevicePushTokenAsync()` — not
+`getExpoPushTokenAsync()`. nitroping delivers through APNs / FCM directly, so
+an Expo push token (`ExponentPushToken[...]`) will look "sent" but never
+arrive.
+
 ```ts
 import * as Notifications from "expo-notifications";
-const { data: token } = await Notifications.getDevicePushTokenAsync();
+const { data: token } = await Notifications.getDevicePushTokenAsync(); // native APNs/FCM token
 ```
+
+Prefer the one-liner below — it handles permission, token, refresh, and
+opens for you.
 
 ### Bare `PushNotificationIOS`
 
@@ -150,6 +158,47 @@ messaging().setBackgroundMessageHandler(async (msg) => {
 });
 ```
 
+## Expo one-liner (optional)
+
+If you use Expo, the `nitroping-react-native/expo` subpath asks for permission,
+fetches the **native** device token (`getDevicePushTokenAsync`), re-registers
+on refresh, **and** reports notification opens. `expo-notifications` is an
+**optional** peer — install it only if you use this path.
+
+```tsx
+import * as Notifications from "expo-notifications";
+import { NitropingProvider } from "nitroping-react-native";
+import { useExpoRegistration } from "nitroping-react-native/expo";
+
+function Register() {
+  // Permission → native token → register → refresh → opens. Platform is
+  // inferred from the token; on iOS the APNs environment (sandbox vs
+  // production) is set automatically from `__DEV__`.
+  const { status } = useExpoRegistration({ notifications: Notifications });
+  return null;
+}
+
+export default function App() {
+  return (
+    <NitropingProvider publicKey="pk_live_...">
+      <Register />
+      {/* ...rest of your app */}
+    </NitropingProvider>
+  );
+}
+```
+
+> **Native token, not Expo push token.** This path uses
+> `getDevicePushTokenAsync` on purpose. Do **not** pass `getExpoPushTokenAsync`
+> output — that `ExponentPushToken[...]` only works with Expo's own push
+> service, and a push to it will look "sent" but never reach the device.
+
+For tap-tracking, send notifications with `notification_id` + `device_id` in
+the `data` map (nitroping also echoes `nitroping_notification_id` /
+`nitroping_device_id`; both are recognised). To report opens manually instead,
+pass `autoReportOpens: false`. If your app requests notification permission
+itself, pass `requestPermission: false`.
+
 ## API
 
 ### `<NitropingProvider>`
@@ -162,12 +211,23 @@ Provide a client. Either inline options or a pre-built `client`:
 </NitropingProvider>
 ```
 
-### `useRegisterDevice({ token, platform, userId?, tags?, metadata? })`
+### `useRegisterDevice({ token, platform, userId?, tags?, metadata?, environment? })`
 
 Registers on mount and re-registers when `token` changes. Returns
 `{ device, status, error }` where `status` is
 `"idle" | "registering" | "registered" | "error"`. Stays idle while `token` is
-`null`.
+`null`. On iOS, `environment` (`"sandbox" | "production"`) defaults from
+`__DEV__` when omitted.
+
+### `useExpoRegistration({ notifications, platform?, userId?, tags?, metadata?, requestPermission?, autoReportOpens? })`
+
+From `nitroping-react-native/expo`. Permission + native token + register +
+refresh + opens, in one hook. Returns the same shape as `useRegisterDevice`.
+
+### `useFirebaseRegistration({ messaging, platform, ... })`
+
+From `nitroping-react-native/firebase`. FCM token + register + refresh +
+opens, in one hook.
 
 ### `useNotificationEvents()`
 
