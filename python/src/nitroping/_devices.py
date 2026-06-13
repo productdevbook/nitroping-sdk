@@ -1,7 +1,8 @@
 """``devices`` resource client.
 
 Mounted on :class:`nitroping.Nitroping` as ``np.devices``. Wraps
-``POST /api/v1/devices`` and ``DELETE /api/v1/devices/:id``.
+``POST /api/v1/devices``, ``PUT /api/v1/devices/:id``, and
+``DELETE /api/v1/devices/:id``.
 """
 
 from __future__ import annotations
@@ -10,11 +11,16 @@ from typing import Any, cast
 from urllib.parse import quote
 
 from ._http import HttpClient
-from .types import DeactivateDeviceResult, Platform, RegisterDeviceResult
+from .types import (
+    DeactivateDeviceResult,
+    Platform,
+    RegisterDeviceResult,
+    UpdateDeviceResult,
+)
 
 
 class DevicesClient:
-    """Register and deactivate device rows."""
+    """Register, update, and deactivate device rows."""
 
     def __init__(self, http: HttpClient) -> None:
         self._http = http
@@ -28,12 +34,15 @@ class DevicesClient:
         web_push_p256dh: str | None = None,
         web_push_auth: str | None = None,
         metadata: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
     ) -> RegisterDeviceResult:
         """Register (or update) a device with the secret API key.
 
         Idempotent on ``(app_id, token, user_id)``. Returns
         ``{"id": ..., "created": True}`` when a new row was inserted,
         ``{"id": ..., "created": False}`` when an existing device matched.
+
+        ``tags`` enables tag-based targeting (``target={"tags": [...]}``).
         """
         wire: dict[str, Any] = {"token": token, "platform": platform}
         if user_id is not None:
@@ -44,10 +53,33 @@ class DevicesClient:
             wire["web_push_auth"] = web_push_auth
         if metadata is not None:
             wire["metadata"] = metadata
+        if tags is not None:
+            wire["tags"] = tags
 
         path = "/api/v1/public/devices" if self._http.auth_scheme == "Public" else "/api/v1/devices"
         response = self._http.request("POST", path, body=wire)
         return cast(RegisterDeviceResult, response)
+
+    def update(
+        self,
+        device_id: str,
+        *,
+        tags: list[str] | None = None,
+    ) -> UpdateDeviceResult:
+        """Update a device (e.g. replace its tags).
+
+        Wraps ``PUT /api/v1/devices/:id``. Returns ``{"id": ..., "tags":
+        [...]}``. Raises :class:`~nitroping.errors.ApiError` with
+        ``code = "not_found"`` if the id doesn't belong to your app.
+        """
+        wire: dict[str, Any] = {}
+        if tags is not None:
+            wire["tags"] = tags
+
+        response = self._http.request(
+            "PUT", f"/api/v1/devices/{quote(device_id, safe='')}", body=wire
+        )
+        return cast(UpdateDeviceResult, response)
 
     def deactivate(self, device_id: str) -> DeactivateDeviceResult:
         """Soft-delete a device (sets ``status = inactive``).

@@ -7,16 +7,24 @@ import os
 from typing import Any
 
 from ._devices import DevicesClient
+from ._events import EventsClient
 from ._http import DEFAULT_BASE_URL, HttpClient
 from ._notifications import NotificationsClient
+from ._track import TrackClient
 from .errors import NitropingError
 from .types import (
+    CancelNotificationResult,
     DeactivateDeviceResult,
+    EngagementEvent,
     NotificationAction,
     NotificationResult,
     NotificationTarget,
     Platform,
     RegisterDeviceResult,
+    ReportEventResult,
+    TrackEvent,
+    TrackResult,
+    UpdateDeviceResult,
 )
 
 
@@ -36,10 +44,14 @@ class Nitroping:
         print(result["id"], result["status"])
     """
 
-    #: ``notifications`` resource — send, get.
+    #: ``notifications`` resource — send, get, cancel.
     notifications: NotificationsClient
-    #: ``devices`` resource — register, deactivate.
+    #: ``devices`` resource — register, update, deactivate.
     devices: DevicesClient
+    #: ``track`` resource — delivery/open/click callbacks (``POST /track``).
+    track: TrackClient
+    #: ``events`` resource — public engagement events (``POST /events``).
+    events: EventsClient
     #: Internal HTTP client. Exposed for advanced use (custom requests).
     http: HttpClient
 
@@ -68,6 +80,8 @@ class Nitroping:
         )
         self.notifications = NotificationsClient(self.http)
         self.devices = DevicesClient(self.http)
+        self.track = TrackClient(self.http)
+        self.events = EventsClient(self.http)
 
 
 class _AsyncNotificationsClient:
@@ -128,6 +142,12 @@ class _AsyncNotificationsClient:
             None, self._inner.get, notification_id
         )
 
+    async def cancel(self, notification_id: str) -> CancelNotificationResult:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, self._inner.cancel, notification_id
+        )
+
 
 class _AsyncDevicesClient:
     """Awaitable façade over :class:`DevicesClient`."""
@@ -144,6 +164,7 @@ class _AsyncDevicesClient:
         web_push_p256dh: str | None = None,
         web_push_auth: str | None = None,
         metadata: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
     ) -> RegisterDeviceResult:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
@@ -155,13 +176,80 @@ class _AsyncDevicesClient:
                 web_push_p256dh=web_push_p256dh,
                 web_push_auth=web_push_auth,
                 metadata=metadata,
+                tags=tags,
             ),
+        )
+
+    async def update(
+        self,
+        device_id: str,
+        *,
+        tags: list[str] | None = None,
+    ) -> UpdateDeviceResult:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._inner.update(device_id, tags=tags),
         )
 
     async def deactivate(self, device_id: str) -> DeactivateDeviceResult:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None, self._inner.deactivate, device_id
+        )
+
+
+class _AsyncTrackClient:
+    """Awaitable façade over :class:`TrackClient`."""
+
+    def __init__(self, inner: TrackClient) -> None:
+        self._inner = inner
+
+    async def record(
+        self,
+        *,
+        event: TrackEvent,
+        delivery_log_id: str | None = None,
+        notification_id: str | None = None,
+        device_token: str | None = None,
+    ) -> TrackResult:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._inner.record(
+                event=event,
+                delivery_log_id=delivery_log_id,
+                notification_id=notification_id,
+                device_token=device_token,
+            ),
+        )
+
+
+class _AsyncEventsClient:
+    """Awaitable façade over :class:`EventsClient`."""
+
+    def __init__(self, inner: EventsClient) -> None:
+        self._inner = inner
+
+    async def report(
+        self,
+        *,
+        notification_id: str,
+        device_id: str,
+        type: EngagementEvent,
+        action_id: str | None = None,
+        happened_at: str | None = None,
+    ) -> ReportEventResult:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._inner.report(
+                notification_id=notification_id,
+                device_id=device_id,
+                type=type,
+                action_id=action_id,
+                happened_at=happened_at,
+            ),
         )
 
 
@@ -180,6 +268,8 @@ class AsyncNitroping:
 
     notifications: _AsyncNotificationsClient
     devices: _AsyncDevicesClient
+    track: _AsyncTrackClient
+    events: _AsyncEventsClient
 
     def __init__(
         self,
@@ -197,6 +287,8 @@ class AsyncNitroping:
         )
         self.notifications = _AsyncNotificationsClient(self._sync.notifications)
         self.devices = _AsyncDevicesClient(self._sync.devices)
+        self.track = _AsyncTrackClient(self._sync.track)
+        self.events = _AsyncEventsClient(self._sync.events)
 
     @property
     def http(self) -> HttpClient:

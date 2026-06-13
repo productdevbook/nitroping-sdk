@@ -44,8 +44,14 @@ class TargetUserIds(TypedDict):
     user_ids: list[str]
 
 
-#: Target selector for a notification. Exactly one of the three.
-NotificationTarget = TargetAll | TargetDeviceIds | TargetUserIds
+class TargetTags(TypedDict):
+    """Hit every device row tagged with one of the given tags."""
+
+    tags: list[str]
+
+
+#: Target selector for a notification. Exactly one of the four.
+NotificationTarget = TargetAll | TargetDeviceIds | TargetUserIds | TargetTags
 
 
 class SendOptions(TypedDict, total=False):
@@ -79,11 +85,46 @@ class RegisterDeviceResult(TypedDict):
     created: bool
 
 
+class UpdateDeviceResult(TypedDict):
+    """Response from ``PUT /api/v1/devices/:id``."""
+
+    #: UUID of the device row.
+    id: str
+    #: The device's tags after the update.
+    tags: list[str]
+
+
 class DeactivateDeviceResult(TypedDict):
     """Response from ``DELETE /api/v1/devices/:id``."""
 
     id: str
     status: str
+
+
+class CancelNotificationResult(TypedDict):
+    """Response from ``DELETE /api/v1/notifications/:id``."""
+
+    id: str
+    status: str
+
+
+#: Delivery-tracking event type for ``POST /api/v1/track``.
+TrackEvent = Literal["delivered", "opened", "clicked"]
+
+#: Engagement event type for ``POST /api/v1/events``.
+EngagementEvent = Literal["opened", "clicked"]
+
+
+class TrackResult(TypedDict):
+    """Response from ``POST /api/v1/track``."""
+
+    accepted: bool
+
+
+class ReportEventResult(TypedDict):
+    """Response from ``POST /api/v1/events``."""
+
+    accepted: bool
 
 
 class WebhookEvent(TypedDict):

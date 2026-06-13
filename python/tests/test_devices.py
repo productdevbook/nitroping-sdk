@@ -52,6 +52,36 @@ def test_register_web_with_p256dh_and_auth(mock_urlopen):
     assert body["web_push_auth"] == "auth_secret_value"
 
 
+def test_register_with_tags(mock_urlopen):
+    """tags kwarg lands on the wire as a `tags` array."""
+    mock_urlopen.enqueue_json(201, {"id": "dev-3", "created": True})
+
+    np = Nitroping(api_key="np_x")
+    np.devices.register(
+        platform="android",
+        token="fcm-token-xyz",
+        tags=["beta", "vip"],
+    )
+
+    body = mock_urlopen.calls[0].body_json
+    assert body is not None
+    assert body["tags"] == ["beta", "vip"]
+
+
+def test_update_sends_put_with_tags(mock_urlopen):
+    """PUT /api/v1/devices/:id with {tags:[...]}, returns {id, tags}."""
+    mock_urlopen.enqueue_json(200, {"id": "dev-1", "tags": ["beta"]})
+
+    np = Nitroping(api_key="np_x")
+    result = np.devices.update("dev-1", tags=["beta"])
+
+    assert result == {"id": "dev-1", "tags": ["beta"]}
+    call = mock_urlopen.calls[0]
+    assert call.method == "PUT"
+    assert call.url == "https://nitroping.dev/api/v1/devices/dev-1"
+    assert call.body_json == {"tags": ["beta"]}
+
+
 def test_deactivate_sends_delete(mock_urlopen):
     """DELETE /api/v1/devices/:id with proper URL-encoded id."""
     mock_urlopen.enqueue_json(200, {"id": "dev-1", "status": "inactive"})

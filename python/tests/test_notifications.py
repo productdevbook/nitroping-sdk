@@ -145,6 +145,47 @@ def test_send_target_device_ids(mock_urlopen):
     assert mock_urlopen.calls[0].body_json["target"] == {"device_ids": ["d1", "d2"]}
 
 
+def test_send_target_tags(mock_urlopen):
+    """target={'tags': [...]} passes through unchanged on the wire."""
+    mock_urlopen.enqueue_json(201, {"id": "n1", "status": "queued"})
+
+    np = Nitroping(api_key="np_x")
+    np.notifications.send(
+        title="x",
+        body="y",
+        target={"tags": ["beta", "vip"]},
+    )
+
+    assert mock_urlopen.calls[0].body_json is not None
+    assert mock_urlopen.calls[0].body_json["target"] == {"tags": ["beta", "vip"]}
+
+
+def test_cancel_sends_delete(mock_urlopen):
+    """np.notifications.cancel(id) → DELETE /api/v1/notifications/<id>."""
+    mock_urlopen.enqueue_json(200, {"id": "n1", "status": "canceled"})
+
+    np = Nitroping(api_key="np_x")
+    result = np.notifications.cancel("n1")
+
+    assert result == {"id": "n1", "status": "canceled"}
+    assert mock_urlopen.calls[0].method == "DELETE"
+    assert mock_urlopen.calls[0].url == "https://nitroping.dev/api/v1/notifications/n1"
+
+
+def test_cancel_409_raises_apierror(mock_urlopen):
+    """409 with `cannot_cancel` code is surfaced as ApiError."""
+    mock_urlopen.enqueue_error(
+        409,
+        {"error": {"code": "cannot_cancel", "message": "Already delivered"}},
+    )
+
+    np = Nitroping(api_key="np_x")
+    with pytest.raises(ApiError) as exc:
+        np.notifications.cancel("n1")
+    assert exc.value.code == "cannot_cancel"
+    assert exc.value.status == 409
+
+
 def test_get_notification(mock_urlopen):
     """np.notifications.get(id) → GET /api/v1/notifications/<id>."""
     mock_urlopen.enqueue_json(

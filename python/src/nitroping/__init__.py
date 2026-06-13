@@ -21,8 +21,10 @@ from __future__ import annotations
 
 from ._client import AsyncNitroping, Nitroping
 from ._devices import DevicesClient
+from ._events import EventsClient
 from ._http import DEFAULT_BASE_URL, HttpClient
 from ._notifications import NotificationsClient
+from ._track import TrackClient
 from .errors import (
     ApiError,
     InvalidSignatureError,
@@ -32,27 +34,37 @@ from .errors import (
     TimestampOutOfRangeError,
 )
 from .types import (
+    CancelNotificationResult,
     DeactivateDeviceResult,
+    EngagementEvent,
     NotificationAction,
     NotificationResult,
     NotificationTarget,
     Platform,
     RegisterDeviceResult,
+    ReportEventResult,
     SendOptions,
     TargetAll,
     TargetDeviceIds,
+    TargetTags,
     TargetUserIds,
+    TrackEvent,
+    TrackResult,
+    UpdateDeviceResult,
     WebhookEvent,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.3"
 
 __all__ = [
     "DEFAULT_BASE_URL",
     "ApiError",
     "AsyncNitroping",
+    "CancelNotificationResult",
     "DeactivateDeviceResult",
     "DevicesClient",
+    "EngagementEvent",
+    "EventsClient",
     "HttpClient",
     "InvalidSignatureError",
     "MissingSignatureHeaderError",
@@ -65,11 +77,17 @@ __all__ = [
     "NotificationsClient",
     "Platform",
     "RegisterDeviceResult",
+    "ReportEventResult",
     "SendOptions",
     "TargetAll",
     "TargetDeviceIds",
+    "TargetTags",
     "TargetUserIds",
     "TimestampOutOfRangeError",
+    "TrackClient",
+    "TrackEvent",
+    "TrackResult",
+    "UpdateDeviceResult",
     "WebhookEvent",
     "__version__",
 ]

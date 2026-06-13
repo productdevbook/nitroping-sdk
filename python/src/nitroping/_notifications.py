@@ -10,7 +10,12 @@ from typing import Any, cast
 from urllib.parse import quote
 
 from ._http import HttpClient
-from .types import NotificationAction, NotificationResult, NotificationTarget
+from .types import (
+    CancelNotificationResult,
+    NotificationAction,
+    NotificationResult,
+    NotificationTarget,
+)
 
 
 class NotificationsClient:
@@ -92,3 +97,17 @@ class NotificationsClient:
             "GET", f"/api/v1/notifications/{quote(notification_id, safe='')}"
         )
         return cast(dict[str, Any], response)
+
+    def cancel(self, notification_id: str) -> CancelNotificationResult:
+        """Cancel a scheduled or in-flight notification.
+
+        Wraps ``DELETE /api/v1/notifications/:id``. Returns
+        ``{"id": ..., "status": "canceled"}``. Raises
+        :class:`~nitroping.errors.ApiError` with ``code = "cannot_cancel"``
+        (409) if the notification already reached a terminal state, or
+        ``code = "not_found"`` (404).
+        """
+        response = self._http.request(
+            "DELETE", f"/api/v1/notifications/{quote(notification_id, safe='')}"
+        )
+        return cast(CancelNotificationResult, response)
