@@ -45,7 +45,11 @@ internal class HttpTransport(
     /**
      * Send a request and decode the response.
      *
-     * @param method HTTP verb (`"GET"`, `"POST"`, `"DELETE"`).
+     * @param method HTTP verb (`"GET"`, `"POST"`, `"PUT"`, `"DELETE"`).
+     *               `java.net.http.HttpRequest.Builder.method(...)` accepts
+     *               any of these; only `CONNECT` is rejected by the JDK
+     *               client, so `PUT` for the device-update endpoint works
+     *               without a dedicated code path.
      * @param path path component starting with `/`; appended to [baseUrl].
      * @param body optional value tree (`Map<String, Any?>`); JSON-encoded
      *             via [Json.encode] when non-null.
@@ -134,7 +138,7 @@ internal class HttpTransport(
     }
 
     internal companion object {
-        const val SDK_VERSION: String = "0.1.0"
+        const val SDK_VERSION: String = "0.2.3"
 
         private fun defaultClient(timeoutMs: Long): HttpClient =
             HttpClient.newBuilder()

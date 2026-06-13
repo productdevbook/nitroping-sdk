@@ -48,6 +48,27 @@ public class Notifications internal constructor(private val transport: HttpTrans
             ?: throw NitropingException("Unexpected response shape for GET notification", code = "decode_error")
     }
 
+    /**
+     * Cancel a queued or scheduled notification.
+     *
+     * Returns `{ id, status = "canceled" }`. Throws [ApiException] with
+     * `code = "not_found"` if the id doesn't belong to your app, or
+     * `code = "cannot_cancel"` (409) if the notification already reached a
+     * terminal state (sent / failed / partial / canceled).
+     */
+    public suspend fun cancel(id: String): NotificationCancelResult {
+        require(id.isNotEmpty()) { "Notification id must not be empty" }
+        val raw = transport.request("DELETE", "/api/v1/notifications/$id")
+        val map = raw as? Map<*, *>
+            ?: throw NitropingException("Unexpected response shape", code = "decode_error")
+        return NotificationCancelResult(
+            id = map["id"] as? String
+                ?: throw NitropingException("Missing `id` in response", code = "decode_error"),
+            status = map["status"] as? String
+                ?: throw NitropingException("Missing `status` in response", code = "decode_error"),
+        )
+    }
+
     /** camelCase → snake_case + drop `null`s, matching the JS SDK's `toWire`. */
     private fun toWire(input: SendRequest): Map<String, Any?> {
         val wire = LinkedHashMap<String, Any?>()
@@ -79,6 +100,7 @@ public class Notifications internal constructor(private val transport: HttpTrans
         Target.All -> mapOf("all" to true)
         is Target.DeviceIds -> mapOf("device_ids" to target.ids)
         is Target.UserIds -> mapOf("user_ids" to target.ids)
+        is Target.Tags -> mapOf("tags" to target.tags)
     }
 
     private fun decodeResult(raw: Any?): NotificationResult {

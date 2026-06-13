@@ -50,6 +50,30 @@ public class Devices internal constructor(private val transport: HttpTransport) 
         )
     }
 
+    /**
+     * Update a device — today only its `tags`. Wraps `PUT /api/v1/devices/:id`.
+     *
+     * Pass an empty list to clear all tags. Returns `{ id, tags }` with the
+     * tags as they stand after the update. Throws [ApiException] with
+     * `code = "not_found"` if the id doesn't belong to your app.
+     */
+    @Suppress("UNCHECKED_CAST")
+    public suspend fun update(id: String, tags: List<String>): DeviceUpdateResult {
+        require(id.isNotEmpty()) { "Device id must not be empty" }
+        val raw = transport.request(
+            method = "PUT",
+            path = "/api/v1/devices/$id",
+            body = mapOf("tags" to tags),
+        )
+        val map = raw as? Map<*, *>
+            ?: throw NitropingException("Unexpected response shape", code = "decode_error")
+        return DeviceUpdateResult(
+            id = map["id"] as? String
+                ?: throw NitropingException("Missing `id` in response", code = "decode_error"),
+            tags = (map["tags"] as? List<*>)?.map { it as String } ?: emptyList(),
+        )
+    }
+
     private fun toWire(input: DeviceRequest): Map<String, Any?> {
         val wire = LinkedHashMap<String, Any?>()
         wire["token"] = input.token
@@ -58,6 +82,7 @@ public class Devices internal constructor(private val transport: HttpTransport) 
         input.webPushP256dh?.let { wire["web_push_p256dh"] = it }
         input.webPushAuth?.let { wire["web_push_auth"] = it }
         input.metadata?.let { wire["metadata"] = it }
+        input.tags?.let { wire["tags"] = it }
         return wire
     }
 

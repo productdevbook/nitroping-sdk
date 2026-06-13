@@ -40,6 +40,13 @@ public sealed class Target {
 
     /** Send to every device bound to the given user ids. Wire: `{"user_ids":[...]}`. */
     public data class UserIds(public val ids: List<String>) : Target()
+
+    /**
+     * Send to every active device carrying any of the given tags. Wire:
+     * `{"tags":[...]}`. Tags are attached on device register / update
+     * (see [DeviceRequest.tags] and `devices.update`).
+     */
+    public data class Tags(public val tags: List<String>) : Target()
 }
 
 /**
@@ -111,6 +118,12 @@ public data class DeviceRequest(
     public val webPushAuth: String? = null,
     /** Arbitrary key-value pairs stored alongside the device row. */
     public val metadata: Map<String, Any?>? = null,
+    /**
+     * Segmentation labels used by `target = Target.Tags(...)` on the
+     * notifications endpoint. Trimmed + deduped server-side (max 32 tags,
+     * 64 bytes each). Wire: `{"tags":[...]}`.
+     */
+    public val tags: List<String>? = null,
 )
 
 /** Response from `POST /api/v1/devices`. */
@@ -126,6 +139,66 @@ public data class DeviceDeactivateResult(
     public val id: String,
     /** Soft-deleted; the row stays with `status = "inactive"`. */
     public val status: String,
+)
+
+/** Response from `PUT /api/v1/devices/:id` (device update). */
+public data class DeviceUpdateResult(
+    public val id: String,
+    /** The device's tags after the update. Empty when all tags were cleared. */
+    public val tags: List<String>,
+)
+
+/** Response from `DELETE /api/v1/notifications/:id` (cancel). */
+public data class NotificationCancelResult(
+    public val id: String,
+    /** Status after cancellation — `"canceled"`. */
+    public val status: String,
+)
+
+/** The kinds of event reported via `POST /api/v1/track`. */
+public enum class TrackEvent(public val wire: String) {
+    DELIVERED("delivered"),
+    OPENED("opened"),
+    CLICKED("clicked"),
+}
+
+/**
+ * Request body for `POST /api/v1/track`. Exactly one of the two branches
+ * identifies the target: either by the `deliveryLogId` the SDK received in
+ * the original push payload, or by `notificationId` + the device's
+ * `deviceToken`.
+ */
+public sealed class TrackRequest {
+    /** The event being reported. */
+    public abstract val event: TrackEvent
+
+    /** Identify by the delivery log id. Wire: `{"delivery_log_id":..,"event":..}`. */
+    public data class ByDeliveryLog(
+        public val deliveryLogId: String,
+        public override val event: TrackEvent,
+    ) : TrackRequest()
+
+    /**
+     * Identify by notification id + the device's provider token. Wire:
+     * `{"notification_id":..,"device_token":..,"event":..}`.
+     */
+    public data class ByNotification(
+        public val notificationId: String,
+        public val deviceToken: String,
+        public override val event: TrackEvent,
+    ) : TrackRequest()
+}
+
+/** Response from `POST /api/v1/track`. */
+public data class TrackResult(
+    /** Always `true` — track is best-effort and the server 202s immediately. */
+    public val accepted: Boolean,
+)
+
+/** Response from `GET /api/v1/public/apps/:id/vapid`. */
+public data class VapidPublicKey(
+    /** Base64url-encoded VAPID public key for `pushManager.subscribe`. */
+    public val publicKey: String,
 )
 
 /**

@@ -203,6 +203,126 @@ class NotificationsTest {
         @Suppress("UNUSED_VARIABLE") val unused = original
     }
 
+    @Test fun `notifications cancel sends DELETE and parses id+status`() = runTest {
+        stub.enqueue(status = 200, body = """{"id":"notif_1","status":"canceled"}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        val result = client.notifications.cancel("notif_1")
+        assertEquals(NotificationCancelResult(id = "notif_1", status = "canceled"), result)
+
+        val req = stub.received.single()
+        assertEquals("DELETE", req.method)
+        assertEquals("/api/v1/notifications/notif_1", req.path)
+    }
+
+    @Test fun `converts target tags to wire format`() = runTest {
+        stub.enqueue(status = 201, body = """{"id":"n1","status":"queued"}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        client.notifications.send(
+            SendRequest(
+                title = "x",
+                body = "y",
+                target = Target.Tags(listOf("premium", "tr")),
+            ),
+        )
+
+        val body = Json.decode(stub.received.single().body) as Map<*, *>
+        assertEquals(mapOf("tags" to listOf("premium", "tr")), body["target"])
+    }
+
+    @Test fun `devices update sends PUT with tags body and parses id+tags`() = runTest {
+        stub.enqueue(status = 200, body = """{"id":"dev-1","tags":["premium","tr"]}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        val result = client.devices.update("dev-1", listOf("premium", "tr"))
+        assertEquals(DeviceUpdateResult(id = "dev-1", tags = listOf("premium", "tr")), result)
+
+        val req = stub.received.single()
+        assertEquals("PUT", req.method)
+        assertEquals("/api/v1/devices/dev-1", req.path)
+        val body = Json.decode(req.body) as Map<*, *>
+        assertEquals(listOf("premium", "tr"), body["tags"])
+    }
+
+    @Test fun `devices update with empty list clears tags`() = runTest {
+        stub.enqueue(status = 200, body = """{"id":"dev-1","tags":[]}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        val result = client.devices.update("dev-1", emptyList())
+        assertEquals(DeviceUpdateResult(id = "dev-1", tags = emptyList()), result)
+
+        val body = Json.decode(stub.received.single().body) as Map<*, *>
+        assertEquals(emptyList<String>(), body["tags"])
+    }
+
+    @Test fun `devices register includes tags when provided`() = runTest {
+        stub.enqueue(status = 201, body = """{"id":"dev-1","created":true}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        client.devices.register(
+            DeviceRequest(
+                platform = Platform.WEB,
+                token = "https://push.example/abc",
+                tags = listOf("beta"),
+            ),
+        )
+
+        val body = Json.decode(stub.received.single().body) as Map<*, *>
+        assertEquals(listOf("beta"), body["tags"])
+    }
+
+    @Test fun `track record by delivery log posts snake_case body`() = runTest {
+        stub.enqueue(status = 202, body = """{"accepted":true}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        val result = client.track.record(
+            TrackRequest.ByDeliveryLog(deliveryLogId = "dl_1", event = TrackEvent.DELIVERED),
+        )
+        assertEquals(TrackResult(accepted = true), result)
+
+        val req = stub.received.single()
+        assertEquals("POST", req.method)
+        assertEquals("/api/v1/track", req.path)
+        val body = Json.decode(req.body) as Map<*, *>
+        assertEquals("dl_1", body["delivery_log_id"])
+        assertEquals("delivered", body["event"])
+        assertTrue("notification_id" !in body)
+        assertTrue("device_token" !in body)
+    }
+
+    @Test fun `track record by notification posts notification_id+device_token`() = runTest {
+        stub.enqueue(status = 202, body = """{"accepted":true}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        val result = client.track.record(
+            TrackRequest.ByNotification(
+                notificationId = "notif_1",
+                deviceToken = "fcm-token-abc",
+                event = TrackEvent.OPENED,
+            ),
+        )
+        assertEquals(TrackResult(accepted = true), result)
+
+        val body = Json.decode(stub.received.single().body) as Map<*, *>
+        assertEquals("notif_1", body["notification_id"])
+        assertEquals("fcm-token-abc", body["device_token"])
+        assertEquals("opened", body["event"])
+        assertTrue("delivery_log_id" !in body)
+    }
+
+    @Test fun `fetchVapidPublicKey GETs the public endpoint and reads public_key`() = runTest {
+        stub.enqueue(status = 200, body = """{"public_key":"BVAPID...key"}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        val result = client.fetchVapidPublicKey("app_1")
+        assertEquals(VapidPublicKey(publicKey = "BVAPID...key"), result)
+
+        val req = stub.received.single()
+        assertEquals("GET", req.method)
+        assertEquals("/api/v1/public/apps/app_1/vapid", req.path)
+    }
+
     @Test fun `notifications get returns the raw map`() = runTest {
         stub.enqueue(
             status = 200,

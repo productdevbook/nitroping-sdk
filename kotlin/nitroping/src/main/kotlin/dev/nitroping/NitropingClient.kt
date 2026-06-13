@@ -71,14 +71,41 @@ public class NitropingClient(
         )
     }
 
-    /** `notifications` resource — `send`, `get`. */
+    /** `notifications` resource — `send`, `get`, `cancel`. */
     public val notifications: Notifications = Notifications(transport)
 
-    /** `devices` resource — `register`, `deactivate`. */
+    /** `devices` resource — `register`, `update`, `deactivate`. */
     public val devices: Devices = Devices(transport)
 
     /** `events` resource — `report` (open / click). */
     public val events: Events = Events(transport)
+
+    /** `track` resource — `record` (delivered / opened / clicked callback). */
+    public val track: Track = Track(transport)
+
+    /**
+     * Fetch an app's VAPID public key for Web Push.
+     *
+     * Wraps `GET /api/v1/public/apps/:id/vapid`. The key is public by
+     * definition (it ships in the JWT on every push), so the endpoint needs
+     * no auth — though the SDK still sends its `Authorization` header, which
+     * the server ignores here.
+     *
+     * Returns [VapidPublicKey]. Throws [ApiException] with
+     * `code = "vapid_not_configured"` (404) when the app has no VAPID
+     * bundle linked, or `code = "not_found"` (404) when the app id is
+     * unknown.
+     */
+    public suspend fun fetchVapidPublicKey(appId: String): VapidPublicKey {
+        require(appId.isNotEmpty()) { "appId must not be empty" }
+        val raw = transport.request("GET", "/api/v1/public/apps/$appId/vapid")
+        val map = raw as? Map<*, *>
+            ?: throw NitropingException("Unexpected response shape", code = "decode_error")
+        return VapidPublicKey(
+            publicKey = map["public_key"] as? String
+                ?: throw NitropingException("Missing `public_key` in response", code = "decode_error"),
+        )
+    }
 
     public companion object {
         /** Default base URL pointing at the hosted nitroping service. */
