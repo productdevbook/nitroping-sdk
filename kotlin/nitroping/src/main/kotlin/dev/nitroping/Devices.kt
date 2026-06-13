@@ -83,6 +83,7 @@ public class Devices internal constructor(private val transport: HttpTransport) 
         input.webPushAuth?.let { wire["web_push_auth"] = it }
         input.metadata?.let { wire["metadata"] = it }
         input.tags?.let { wire["tags"] = it }
+        input.environment?.let { wire["environment"] = it }
         return wire
     }
 

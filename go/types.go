@@ -168,6 +168,11 @@ type DeviceRequest struct {
 	// Tags are labels used for tag-based targeting (Tags target). Omitted
 	// from the wire body when nil.
 	Tags []string `json:"tags,omitempty"`
+	// Environment is the iOS APNs environment ("sandbox" or "production").
+	// The push host is environment-specific and a token can't reveal which,
+	// so report it for iOS devices; ignored for other platforms. Omitted
+	// from the wire body when nil.
+	Environment *string `json:"environment,omitempty"`
 }
 
 // DeviceResult is the response from POST /api/v1/devices.

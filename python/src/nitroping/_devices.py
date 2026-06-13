@@ -35,6 +35,7 @@ class DevicesClient:
         web_push_auth: str | None = None,
         metadata: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        environment: str | None = None,
     ) -> RegisterDeviceResult:
         """Register (or update) a device with the secret API key.
 
@@ -43,6 +44,11 @@ class DevicesClient:
         ``{"id": ..., "created": False}`` when an existing device matched.
 
         ``tags`` enables tag-based targeting (``target={"tags": [...]}``).
+
+        ``environment`` is the iOS APNs environment (``"sandbox"`` or
+        ``"production"``). The push host is environment-specific and a
+        token can't reveal which, so report it for iOS devices; ignored
+        for other platforms.
         """
         wire: dict[str, Any] = {"token": token, "platform": platform}
         if user_id is not None:
@@ -55,6 +61,8 @@ class DevicesClient:
             wire["metadata"] = metadata
         if tags is not None:
             wire["tags"] = tags
+        if environment is not None:
+            wire["environment"] = environment
 
         path = "/api/v1/public/devices" if self._http.auth_scheme == "Public" else "/api/v1/devices"
         response = self._http.request("POST", path, body=wire)

@@ -49,6 +49,68 @@ describe("NitropingDevice", () => {
     });
   });
 
+  it("defaults the iOS environment from __DEV__ (sandbox when true)", async () => {
+    const prev = (globalThis as { __DEV__?: boolean }).__DEV__;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
+    try {
+      const spy = mockFetch(() => json({ id: "dev-1", created: true }, 201));
+      const device = new NitropingDevice({ publicKey: "pk_test" });
+
+      await device.registerDevice({ token: "apns-token", platform: "ios" });
+
+      const [, init] = spy.mock.calls[0]! as [string, RequestInit];
+      expect(JSON.parse(init.body as string).environment).toBe("sandbox");
+    } finally {
+      (globalThis as { __DEV__?: boolean }).__DEV__ = prev;
+    }
+  });
+
+  it("defaults the iOS environment to production when __DEV__ is false", async () => {
+    const prev = (globalThis as { __DEV__?: boolean }).__DEV__;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
+    try {
+      const spy = mockFetch(() => json({ id: "dev-1", created: true }, 201));
+      const device = new NitropingDevice({ publicKey: "pk_test" });
+
+      await device.registerDevice({ token: "apns-token", platform: "ios" });
+
+      const [, init] = spy.mock.calls[0]! as [string, RequestInit];
+      expect(JSON.parse(init.body as string).environment).toBe("production");
+    } finally {
+      (globalThis as { __DEV__?: boolean }).__DEV__ = prev;
+    }
+  });
+
+  it("honours an explicit iOS environment over the __DEV__ default", async () => {
+    const prev = (globalThis as { __DEV__?: boolean }).__DEV__;
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
+    try {
+      const spy = mockFetch(() => json({ id: "dev-1", created: true }, 201));
+      const device = new NitropingDevice({ publicKey: "pk_test" });
+
+      await device.registerDevice({
+        token: "apns-token",
+        platform: "ios",
+        environment: "production",
+      });
+
+      const [, init] = spy.mock.calls[0]! as [string, RequestInit];
+      expect(JSON.parse(init.body as string).environment).toBe("production");
+    } finally {
+      (globalThis as { __DEV__?: boolean }).__DEV__ = prev;
+    }
+  });
+
+  it("does not send environment for android", async () => {
+    const spy = mockFetch(() => json({ id: "dev-1", created: true }, 201));
+    const device = new NitropingDevice({ publicKey: "pk_test" });
+
+    await device.registerDevice({ token: "fcm-token", platform: "android" });
+
+    const [, init] = spy.mock.calls[0]! as [string, RequestInit];
+    expect("environment" in JSON.parse(init.body as string)).toBe(false);
+  });
+
   it("reports an engagement event to /api/v1/events", async () => {
     const spy = mockFetch(() => json({ accepted: true }, 202));
     const device = new NitropingDevice({ publicKey: "pk_test" });

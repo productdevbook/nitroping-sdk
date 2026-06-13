@@ -124,6 +124,12 @@ public data class DeviceRequest(
      * 64 bytes each). Wire: `{"tags":[...]}`.
      */
     public val tags: List<String>? = null,
+    /**
+     * iOS APNs environment: `"sandbox"` or `"production"`. The push host is
+     * environment-specific and a token can't reveal which, so report it for
+     * iOS devices; ignored for other platforms. Wire: `{"environment":...}`.
+     */
+    public val environment: String? = null,
 )
 
 /** Response from `POST /api/v1/devices`. */

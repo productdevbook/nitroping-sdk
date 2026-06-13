@@ -70,5 +70,6 @@ function toWire(input: RegisterDeviceRequest): Record<string, unknown> {
   if (input.webPushAuth !== undefined) wire["web_push_auth"] = input.webPushAuth
   if (input.metadata !== undefined) wire["metadata"] = input.metadata
   if (input.tags !== undefined) wire["tags"] = input.tags
+  if (input.environment !== undefined) wire["environment"] = input.environment
   return wire
 }

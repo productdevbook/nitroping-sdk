@@ -73,6 +73,42 @@ describe("devices.register", () => {
     expect(body.web_push_p256dh).toBe("BPS_p256dh_value")
     expect(body.web_push_auth).toBe("auth_secret_value")
   })
+
+  it("forwards the iOS environment field on the wire", async () => {
+    const spy = mockFetch(
+      () =>
+        new Response(JSON.stringify({ id: "dev-3", created: true }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+    )
+
+    const np = new Nitroping({ apiKey: "np_x" })
+    await np.devices.register({
+      platform: "ios",
+      token: "ios-token",
+      environment: "sandbox",
+    })
+
+    const body = JSON.parse(spy.mock.calls[0]![1]!.body as string)
+    expect(body.environment).toBe("sandbox")
+  })
+
+  it("omits environment when not provided", async () => {
+    const spy = mockFetch(
+      () =>
+        new Response(JSON.stringify({ id: "dev-4", created: true }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+    )
+
+    const np = new Nitroping({ apiKey: "np_x" })
+    await np.devices.register({ platform: "ios", token: "ios-token" })
+
+    const body = JSON.parse(spy.mock.calls[0]![1]!.body as string)
+    expect("environment" in body).toBe(false)
+  })
 })
 
 describe("devices.deactivate", () => {

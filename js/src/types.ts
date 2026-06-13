@@ -85,6 +85,14 @@ export interface RegisterDeviceRequest {
   metadata?: Record<string, unknown>
   /** Tags for tag-based targeting (`target: { tags: [...] }`). */
   tags?: string[]
+  /**
+   * APNs environment this iOS token belongs to. Apple's push host is
+   * environment-specific and a token can't be inspected to tell which,
+   * so the client must report it: `"sandbox"` for debug / development
+   * builds (Xcode run, `react-native run-ios`), `"production"` for App
+   * Store / TestFlight. Ignored for non-iOS platforms.
+   */
+  environment?: "sandbox" | "production"
 }
 
 /** Response from `POST /api/v1/devices`. */

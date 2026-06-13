@@ -45,6 +45,15 @@ export interface RegisterInput {
   tags?: string[];
   /** Arbitrary metadata stored with the device. */
   metadata?: Record<string, unknown>;
+  /**
+   * APNs environment for an iOS token: `"sandbox"` (debug / dev build,
+   * `react-native run-ios`) or `"production"` (App Store / TestFlight).
+   * The push host is environment-specific and a token can't reveal which,
+   * so this must be reported. If omitted on iOS we default it from the
+   * React Native `__DEV__` global (`true` → sandbox, else production).
+   * Ignored for Android.
+   */
+  environment?: "sandbox" | "production";
 }
 
 /** Input for {@link NitropingDevice.reportEvent}. */
@@ -95,6 +104,8 @@ export class NitropingDevice {
       userId: input.userId,
       tags: input.tags,
       metadata: input.metadata,
+      environment:
+        input.platform === "ios" ? (input.environment ?? defaultIosEnvironment()) : undefined,
     });
   }
 
@@ -116,4 +127,15 @@ export class NitropingDevice {
       happenedAt: input.happenedAt?.toISOString(),
     });
   }
+}
+
+/**
+ * Infer the iOS APNs environment from the React Native `__DEV__` global:
+ * `true` in a development/debug build (Metro / `run-ios`) → sandbox, and
+ * anything else (release build, or `__DEV__` undefined) → production.
+ * Callers can always override by passing `environment` explicitly.
+ */
+function defaultIosEnvironment(): "sandbox" | "production" {
+  const dev = (globalThis as { __DEV__?: boolean }).__DEV__;
+  return dev === true ? "sandbox" : "production";
 }

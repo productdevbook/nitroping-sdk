@@ -12,6 +12,17 @@ public enum DevicePlatform: String, Codable, Sendable, CaseIterable {
     case web
 }
 
+/// APNs environment an iOS token belongs to. Apple's push host is
+/// environment-specific (`api.sandbox.push.apple.com` vs
+/// `api.push.apple.com`) and a token can't be inspected to tell which,
+/// so the app must report it: `.sandbox` for a development build (Xcode
+/// run / debug), `.production` for App Store or TestFlight. Ignored for
+/// non-iOS platforms.
+public enum APNSEnvironment: String, Codable, Sendable, CaseIterable {
+    case sandbox
+    case production
+}
+
 /// Request body for `POST /api/v1/devices`.
 ///
 /// Idempotent on `(app, token, userId)` server-side, so calling
@@ -46,6 +57,11 @@ public struct DeviceRegistration: Codable, Equatable, Sendable {
     /// Trimmed + deduped server-side (max 32 tags / 64 bytes each).
     public let tags: [String]?
 
+    /// APNs environment for an iOS token. Set `.sandbox` for development
+    /// builds and `.production` for App Store / TestFlight so the server
+    /// routes to the matching Apple host. Ignored for non-iOS platforms.
+    public let environment: APNSEnvironment?
+
     public init(
         platform: DevicePlatform,
         token: String,
@@ -53,7 +69,8 @@ public struct DeviceRegistration: Codable, Equatable, Sendable {
         webPushP256dh: String? = nil,
         webPushAuth: String? = nil,
         metadata: [String: String]? = nil,
-        tags: [String]? = nil
+        tags: [String]? = nil,
+        environment: APNSEnvironment? = nil
     ) {
         self.platform = platform
         self.token = token
@@ -62,6 +79,7 @@ public struct DeviceRegistration: Codable, Equatable, Sendable {
         self.webPushAuth = webPushAuth
         self.metadata = metadata
         self.tags = tags
+        self.environment = environment
     }
 
     enum CodingKeys: String, CodingKey {
@@ -72,6 +90,7 @@ public struct DeviceRegistration: Codable, Equatable, Sendable {
         case webPushAuth = "web_push_auth"
         case metadata
         case tags
+        case environment
     }
 }
 

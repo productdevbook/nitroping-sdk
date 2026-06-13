@@ -19,6 +19,12 @@ export interface UseRegisterDeviceArgs {
   tags?: string[];
   /** Arbitrary metadata stored with the device. */
   metadata?: Record<string, unknown>;
+  /**
+   * APNs environment for iOS: `"sandbox"` or `"production"`. Omit to let
+   * the SDK infer it from the React Native `__DEV__` global. Ignored for
+   * Android.
+   */
+  environment?: "sandbox" | "production";
 }
 
 /** State returned by {@link useRegisterDevice}. */
@@ -44,10 +50,10 @@ export function useRegisterDevice(args: UseRegisterDeviceArgs): UseRegisterDevic
     error: null,
   });
 
-  const { token, platform, userId, tags, metadata } = args;
+  const { token, platform, userId, tags, metadata, environment } = args;
   // Serialize the non-token inputs so the effect re-runs when they change
   // without depending on unstable object identities.
-  const extraKey = JSON.stringify({ platform, userId, tags, metadata });
+  const extraKey = JSON.stringify({ platform, userId, tags, metadata, environment });
 
   // Track the latest request so a stale refresh can't overwrite a newer one.
   const reqId = useRef(0);
@@ -62,7 +68,7 @@ export function useRegisterDevice(args: UseRegisterDeviceArgs): UseRegisterDevic
     setState((s) => ({ ...s, status: "registering", error: null }));
 
     client
-      .registerDevice({ token, platform, userId, tags, metadata })
+      .registerDevice({ token, platform, userId, tags, metadata, environment })
       .then((device) => {
         if (id === reqId.current) {
           setState({ device, status: "registered", error: null });

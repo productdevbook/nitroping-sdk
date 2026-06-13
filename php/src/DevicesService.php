@@ -37,6 +37,10 @@ final class DevicesService
      * time (the server replaces the device's tag set with the supplied
      * list).
      *
+     * Pass `environment` (`'sandbox'` or `'production'`) for iOS devices —
+     * the APNs host is environment-specific and a token can't reveal which,
+     * so it must be reported. Ignored for non-iOS platforms.
+     *
      * @param array<string, mixed>|null $metadata
      * @param list<string>|null         $tags
      *
@@ -50,6 +54,7 @@ final class DevicesService
         ?string $webPushAuth = null,
         ?array $metadata = null,
         ?array $tags = null,
+        ?string $environment = null,
     ): array {
         $payload = [
             'platform' => $platform,
@@ -69,6 +74,9 @@ final class DevicesService
         }
         if ($tags !== null) {
             $payload['tags'] = $tags;
+        }
+        if ($environment !== null) {
+            $payload['environment'] = $environment;
         }
 
         $isPublic = $this->transport instanceof \Productdevbook\Nitroping\Internal\CurlTransport
