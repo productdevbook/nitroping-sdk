@@ -16,7 +16,7 @@ import (
 // versioned via git tags (there is no manifest file to read at build
 // time), so this constant is the single source of truth for the
 // User-Agent. Bump it in lockstep with each tagged release.
-const Version = "0.2.5"
+const Version = "0.2.6"
 
 // defaultUserAgent is appended to every outbound request so server-side
 // logs can distinguish SDK traffic from raw curl/Postman. Tracks
