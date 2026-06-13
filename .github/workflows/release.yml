@@ -63,6 +63,14 @@ jobs:
     permissions:
       contents: read
       id-token: write   # required for npm Trusted Publisher (OIDC)
+    env:
+      # No committed lockfile for this package (it would pin a link: dev
+      # resolution), so never enforce a frozen lockfile — pnpm 11 otherwise
+      # auto-installs frozen on script runs and fails with OUTDATED_LOCKFILE
+      # after the `pnpm add link:` mutates package.json.
+      PNPM_CONFIG_FROZEN_LOCKFILE: "false"
+      PNPM_CONFIG_MINIMUM_RELEASE_AGE: "0"
+      PNPM_CONFIG_STRICT_DEP_BUILDS: "false"
     steps:
       - uses: actions/checkout@v4
       # Use corepack's pnpm (v11+) like the core `npm` job — pnpm 9 does not
