@@ -1,6 +1,6 @@
 {
   "name": "nitroping",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Zero-dependency TypeScript SDK for nitroping push notifications. Send pushes, register devices, verify webhooks. Works in Node, Bun, Deno, Cloudflare Workers, browsers.",
   "keywords": [
     "apns",
