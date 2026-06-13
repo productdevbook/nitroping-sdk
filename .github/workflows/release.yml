@@ -42,8 +42,10 @@ jobs:
 
   # ──────────────────────────────────────────────────────────────────────────
   # npm (React Native) — ACTIVE. Same Trusted Publisher (OIDC) flow as `npm`.
-  # Runs after `npm` because it depends on the freshly-published `nitroping`
-  # core package (`nitroping@^x.y.z`).
+  # Runs after `npm`. We build + link the in-repo core for the test/build
+  # steps (the just-published `nitroping` is too fresh for pnpm's
+  # minimum-release-age gate); the *published* tarball still carries the
+  # committed `nitroping@^x` range from package.json.
   # ──────────────────────────────────────────────────────────────────────────
   npm-react-native:
     needs: npm
@@ -53,15 +55,25 @@ jobs:
       id-token: write   # required for npm Trusted Publisher (OIDC)
     steps:
       - uses: actions/checkout@v4
-      - run: corepack enable
+      # Use pnpm 9 via action-setup (matches the react-native CI job). The
+      # corepack default pulls a newer pnpm whose minimum-release-age gate +
+      # strict ignored-builds turn a fresh-core install into a hard error.
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: 'https://registry.npmjs.org'
-      # Resolve against the freshly-published `nitroping` core (the `npm` job
-      # above publishes it first; this job `needs: npm`).
-      - working-directory: react-native
-        run: pnpm install --no-frozen-lockfile
+      - name: Build core (js)
+        working-directory: js
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Install RN against the local core
+        working-directory: react-native
+        # Link the in-repo core (the just-published registry version is too
+        # fresh for pnpm's release-age gate).
+        run: pnpm add "nitroping@link:../js"
       - working-directory: react-native
         run: pnpm typecheck
       - working-directory: react-native
@@ -69,7 +81,11 @@ jobs:
       - working-directory: react-native
         run: pnpm build
       - working-directory: react-native
-        run: pnpm publish --access public --no-git-checks --provenance
+        # Restore the published dependency range (the link: must not ship),
+        # then publish the tarball.
+        run: |
+          git checkout package.json
+          pnpm publish --access public --no-git-checks --provenance
 
   # ──────────────────────────────────────────────────────────────────────────
   # PyPI — ACTIVE. Skips publish gracefully when PYPI_TOKEN is empty.
