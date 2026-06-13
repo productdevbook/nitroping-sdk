@@ -64,11 +64,31 @@ function wrapper(client: NitropingDevice) {
 }
 
 describe("nitropingIdsFromMessage", () => {
-  it("extracts the pair from data", () => {
+  it("extracts the pair from the nitroping_ namespace", () => {
+    expect(
+      nitropingIdsFromMessage({
+        data: { nitroping_notification_id: "n", nitroping_device_id: "d" },
+      }),
+    ).toEqual({ notificationId: "n", deviceId: "d" });
+  });
+
+  it("accepts the bare keys for backward compatibility", () => {
     expect(nitropingIdsFromMessage({ data: { notification_id: "n", device_id: "d" } })).toEqual({
       notificationId: "n",
       deviceId: "d",
     });
+  });
+
+  it("prefers the namespaced key over a customer's bare notification_id", () => {
+    expect(
+      nitropingIdsFromMessage({
+        data: {
+          nitroping_notification_id: "nitro",
+          notification_id: "customer",
+          nitroping_device_id: "d",
+        },
+      }),
+    ).toEqual({ notificationId: "nitro", deviceId: "d" });
   });
 
   it("returns null when ids are missing", () => {
