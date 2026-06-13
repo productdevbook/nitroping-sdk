@@ -45,31 +45,31 @@ and import it at your app entry.
 Wrap your app in a provider with your public key:
 
 ```tsx
-import { NitropingProvider } from "nitroping-react-native"
+import { NitropingProvider } from "nitroping-react-native";
 
 export default function Root() {
   return (
     <NitropingProvider publicKey="pk_live_...">
       <App />
     </NitropingProvider>
-  )
+  );
 }
 ```
 
 Register the device token and report taps:
 
 ```tsx
-import { useRegisterDevice, useNotificationEvents } from "nitroping-react-native"
+import { useRegisterDevice, useNotificationEvents } from "nitroping-react-native";
 
 function App() {
-  const token = useFcmToken() // your token source — see below
-  const { device, status } = useRegisterDevice({ token, platform: "ios" })
+  const token = useFcmToken(); // your token source — see below
+  const { device, status } = useRegisterDevice({ token, platform: "ios" });
 
-  const { reportOpened } = useNotificationEvents()
+  const { reportOpened } = useNotificationEvents();
   // in your notification-open handler, once you know the notificationId:
   // await reportOpened(notificationId, device!.id)
 
-  return /* ... */
+  return; /* ... */
 }
 ```
 
@@ -82,29 +82,73 @@ token changes (refresh-safe).
 ### `@react-native-firebase/messaging`
 
 ```ts
-import messaging from "@react-native-firebase/messaging"
-import { useEffect, useState } from "react"
+import messaging from "@react-native-firebase/messaging";
+import { useEffect, useState } from "react";
 
 function useFcmToken() {
-  const [token, setToken] = useState<string | null>(null)
+  const [token, setToken] = useState<string | null>(null);
   useEffect(() => {
-    messaging().getToken().then(setToken)
-    return messaging().onTokenRefresh(setToken)
-  }, [])
-  return token
+    messaging().getToken().then(setToken);
+    return messaging().onTokenRefresh(setToken);
+  }, []);
+  return token;
 }
 ```
 
 ### `expo-notifications`
 
 ```ts
-import * as Notifications from "expo-notifications"
-const { data: token } = await Notifications.getDevicePushTokenAsync()
+import * as Notifications from "expo-notifications";
+const { data: token } = await Notifications.getDevicePushTokenAsync();
 ```
 
 ### Bare `PushNotificationIOS`
 
 Grab the token from the `register` event and feed it into `useRegisterDevice`.
+
+## Firebase one-liner (optional)
+
+If you use `@react-native-firebase/messaging`, the `nitroping-react-native/firebase`
+subpath wires the token fetch, refresh, **and** notification-open reporting
+for you. `@react-native-firebase/messaging` is an **optional** peer — install
+it only if you use this path.
+
+```tsx
+import messaging from "@react-native-firebase/messaging";
+import { useFirebaseRegistration } from "nitroping-react-native/firebase";
+
+function App() {
+  // Fetches the FCM token, re-registers on refresh, and reports an `opened`
+  // event when the app is launched from a notification tap.
+  const { status } = useFirebaseRegistration({
+    messaging: messaging(),
+    platform: "android",
+  });
+  return; /* ... */
+}
+```
+
+For tap-tracking to work, send notifications with `notification_id` +
+`device_id` in the `data` map. To report opens manually instead, set
+`autoReportOpens: false` and use `useNotificationEvents()`.
+
+### Background data messages
+
+Firebase delivers data-only messages to a headless handler registered at the
+app entry (outside React). Report engagement from there with the plain client:
+
+```ts
+import messaging from "@react-native-firebase/messaging";
+import { NitropingDevice } from "nitroping-react-native";
+import { nitropingIdsFromMessage } from "nitroping-react-native/firebase";
+
+const device = new NitropingDevice({ publicKey: "pk_live_..." });
+
+messaging().setBackgroundMessageHandler(async (msg) => {
+  const ids = nitropingIdsFromMessage(msg);
+  if (ids) await device.reportEvent({ ...ids, type: "opened" });
+});
+```
 
 ## API
 
@@ -113,7 +157,9 @@ Grab the token from the `register` event and feed it into `useRegisterDevice`.
 Provide a client. Either inline options or a pre-built `client`:
 
 ```tsx
-<NitropingProvider publicKey="pk_..." baseUrl="https://nitroping.dev">…</NitropingProvider>
+<NitropingProvider publicKey="pk_..." baseUrl="https://nitroping.dev">
+  …
+</NitropingProvider>
 ```
 
 ### `useRegisterDevice({ token, platform, userId?, tags?, metadata? })`
