@@ -82,6 +82,10 @@ function toWire(input: SendNotificationRequest): Record<string, unknown> {
   if (input.actions !== undefined) wire["actions"] = input.actions
   if (input.scheduledAt !== undefined) wire["scheduled_at"] = input.scheduledAt
   if (input.expiresAt !== undefined) wire["expires_at"] = input.expiresAt
+  if (input.recurrence !== undefined) wire["recurrence"] = input.recurrence
+  if (input.recurrenceTz !== undefined) wire["recurrence_tz"] = input.recurrenceTz
+  if (input.recurrenceUntil !== undefined) wire["recurrence_until"] = input.recurrenceUntil
+  if (input.emailTo !== undefined) wire["email_to"] = input.emailTo
   wire["target"] = targetToWire(input.target)
   return wire
 }
@@ -91,6 +95,15 @@ function targetToWire(target: SendNotificationRequest["target"]): Record<string,
   if ("deviceIds" in target) return { device_ids: target.deviceIds }
   if ("userIds" in target) return { user_ids: target.userIds }
   if ("tags" in target) return { tags: target.tags }
+  if ("segment" in target) {
+    return {
+      segment: {
+        match: target.segment.match ?? "all",
+        conditions: target.segment.conditions,
+      },
+    }
+  }
+
   // `target` is a discriminated union — exhaustiveness is enforced at
   // the type level, but fall back to passing through for forward compat.
   return target as Record<string, unknown>

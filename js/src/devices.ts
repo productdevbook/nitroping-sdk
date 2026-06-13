@@ -71,5 +71,6 @@ function toWire(input: RegisterDeviceRequest): Record<string, unknown> {
   if (input.metadata !== undefined) wire["metadata"] = input.metadata
   if (input.tags !== undefined) wire["tags"] = input.tags
   if (input.environment !== undefined) wire["environment"] = input.environment
+  if (input.timezone !== undefined) wire["timezone"] = input.timezone
   return wire
 }

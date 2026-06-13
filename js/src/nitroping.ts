@@ -18,6 +18,7 @@
 import { DevicesClient } from "./devices"
 import { NitropingError } from "./errors"
 import { EventsClient } from "./events"
+import { InboxClient } from "./inbox"
 import { HttpClient, type HttpClientOptions } from "./http"
 import { NotificationsClient } from "./notifications"
 import { TrackClient } from "./track"
@@ -43,6 +44,8 @@ export class Nitroping {
   readonly track: TrackClient
   /** `events` resource — public engagement events (`POST /events`). */
   readonly events: EventsClient
+  /** `inbox` resource — in-app notification center (`/public/inbox`). */
+  readonly inbox: InboxClient
 
   /** Internal HTTP client. Exposed for advanced use (custom requests). */
   readonly http: HttpClient
@@ -61,6 +64,7 @@ export class Nitroping {
     this.devices = new DevicesClient(this.http)
     this.track = new TrackClient(this.http)
     this.events = new EventsClient(this.http)
+    this.inbox = new InboxClient(this.http)
   }
 }
 

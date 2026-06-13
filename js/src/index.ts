@@ -17,11 +17,14 @@ export {
 } from "./errors"
 export { EventsClient } from "./events"
 export { DEFAULT_BASE_URL, HttpClient, type HttpClientOptions, SDK_VERSION } from "./http"
+export { InboxClient } from "./inbox"
 export { Nitroping, type NitropingOptions } from "./nitroping"
 export { NotificationsClient, type SendOptions } from "./notifications"
 export { TrackClient } from "./track"
 export type {
   EngagementEvent,
+  InboxItem,
+  InboxListOptions,
   NotificationAction,
   NotificationResponse,
   NotificationTarget,
@@ -29,6 +32,8 @@ export type {
   RegisterDeviceRequest,
   RegisterDeviceResponse,
   ReportEventRequest,
+  Segment,
+  SegmentCondition,
   SendNotificationRequest,
   TrackEvent,
   TrackRequest,

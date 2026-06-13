@@ -94,6 +94,26 @@ describe("devices.register", () => {
     expect(body.environment).toBe("sandbox")
   })
 
+  it("forwards the timezone field on the wire", async () => {
+    const spy = mockFetch(
+      () =>
+        new Response(JSON.stringify({ id: "dev-tz", created: true }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+    )
+
+    const np = new Nitroping({ apiKey: "np_x" })
+    await np.devices.register({
+      platform: "ios",
+      token: "ios-token",
+      timezone: "Europe/Istanbul",
+    })
+
+    const body = JSON.parse(spy.mock.calls[0]![1]!.body as string)
+    expect(body.timezone).toBe("Europe/Istanbul")
+  })
+
   it("omits environment when not provided", async () => {
     const spy = mockFetch(
       () =>

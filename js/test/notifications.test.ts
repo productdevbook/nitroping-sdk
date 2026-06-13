@@ -184,4 +184,58 @@ describe("notifications.send", () => {
     const body = JSON.parse(spy.mock.calls[0]![1]!.body as string)
     expect(body.target).toEqual({ device_ids: ["d1", "d2"] })
   })
+
+  it("converts a segment target to wire format (default match: all)", async () => {
+    const spy = mockFetch(
+      () =>
+        new Response(JSON.stringify({ id: "n1", status: "queued" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+    )
+
+    const np = new Nitroping({ apiKey: "np_x" })
+    await np.notifications.send({
+      title: "x",
+      body: "y",
+      target: {
+        segment: {
+          conditions: [{ field: "metadata.plan", op: "eq", value: "pro" }],
+        },
+      },
+    })
+
+    const body = JSON.parse(spy.mock.calls[0]![1]!.body as string)
+    expect(body.target).toEqual({
+      segment: {
+        match: "all",
+        conditions: [{ field: "metadata.plan", op: "eq", value: "pro" }],
+      },
+    })
+  })
+
+  it("forwards recurrence + email_to in snake_case", async () => {
+    const spy = mockFetch(
+      () =>
+        new Response(JSON.stringify({ id: "n1", status: "scheduled" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+    )
+
+    const np = new Nitroping({ apiKey: "np_x" })
+    await np.notifications.send({
+      title: "Daily",
+      body: "digest",
+      target: { all: true },
+      recurrence: "0 9 * * *",
+      recurrenceTz: "Europe/Istanbul",
+      emailTo: ["a@example.com"],
+    })
+
+    const body = JSON.parse(spy.mock.calls[0]![1]!.body as string)
+    expect(body.recurrence).toBe("0 9 * * *")
+    expect(body.recurrence_tz).toBe("Europe/Istanbul")
+    expect(body.email_to).toEqual(["a@example.com"])
+  })
 })

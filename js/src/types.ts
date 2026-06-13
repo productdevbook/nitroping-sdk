@@ -9,12 +9,30 @@
 /** Supported device platforms. */
 export type Platform = "ios" | "android" | "web"
 
-/** Target selector for a notification. Exactly one of the four. */
+/** A single audience-segment condition over device fields + metadata. */
+export interface SegmentCondition {
+  /** `"platform"` | `"user_id"` | `"timezone"` | `"tag"` | `"metadata.<key>"`. */
+  field: string
+  /** Comparison operator. */
+  op: "eq" | "neq" | "in" | "exists" | "contains" | "gt" | "lt"
+  /** String, number, or array depending on `op` (omit for `exists`). */
+  value?: string | number | Array<string | number>
+}
+
+/** Audience segment — match devices by a list of conditions. */
+export interface Segment {
+  /** AND (`"all"`, default) or OR (`"any"`) over the conditions. */
+  match?: "all" | "any"
+  conditions: SegmentCondition[]
+}
+
+/** Target selector for a notification. Exactly one of the variants. */
 export type NotificationTarget =
   | { all: true }
   | { deviceIds: string[] }
   | { userIds: string[] }
   | { tags: string[] }
+  | { segment: Segment }
 
 /** Action button rendered on the notification (where the platform supports it). */
 export interface NotificationAction {
@@ -57,6 +75,20 @@ export interface SendNotificationRequest {
   scheduledAt?: string
   /** ISO-8601 timestamp; after this the notification is dropped. */
   expiresAt?: string
+  /**
+   * 5-field cron expression. When set, this is a *recurring series*: the
+   * server clones a one-shot occurrence on each tick. e.g. `"0 9 * * *"`.
+   */
+  recurrence?: string
+  /** IANA timezone the `recurrence` cron is evaluated in (default `Etc/UTC`). */
+  recurrenceTz?: string
+  /** ISO-8601 timestamp; the series stops recurring after this. */
+  recurrenceUntil?: string
+  /**
+   * Also deliver this notification as email to these addresses (in addition
+   * to push). Title → subject, body → content.
+   */
+  emailTo?: string[]
   /** Where to send the notification. */
   target: NotificationTarget
 }
@@ -93,6 +125,12 @@ export interface RegisterDeviceRequest {
    * Store / TestFlight. Ignored for non-iOS platforms.
    */
   environment?: "sandbox" | "production"
+  /**
+   * IANA timezone for this device (e.g. `"Europe/Istanbul"`). Used for
+   * quiet-hours delivery — sends inside the app's quiet window are deferred
+   * to the window's end in the device's local time.
+   */
+  timezone?: string
 }
 
 /** Response from `POST /api/v1/devices`. */
@@ -143,6 +181,32 @@ export interface ReportEventRequest {
   actionId?: string
   /** Optional ISO-8601 timestamp of when the event happened. */
   happenedAt?: string
+}
+
+/** One in-app notification-center entry, as returned by the inbox endpoints. */
+export interface InboxItem {
+  /** UUID of the inbox item. */
+  id: string
+  /** UUID of the originating notification. */
+  notificationId: string
+  title?: string
+  body?: string
+  data?: Record<string, unknown>
+  deepLink?: string | null
+  /** `true` once the item has been marked read. */
+  read: boolean
+  /** ISO-8601 timestamp when it was read, or null. */
+  readAt?: string | null
+  /** ISO-8601 timestamp when it landed in the inbox. */
+  insertedAt?: string
+}
+
+/** Options for listing a user's inbox. */
+export interface InboxListOptions {
+  /** Only return unread items. */
+  unreadOnly?: boolean
+  /** Max items to return (server caps at 200). */
+  limit?: number
 }
 
 /**

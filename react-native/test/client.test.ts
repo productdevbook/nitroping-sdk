@@ -35,6 +35,8 @@ describe("NitropingDevice", () => {
       platform: "android",
       userId: "u-1",
       tags: ["beta"],
+      // Opt out of auto-timezone so this asserts the base wire shape.
+      timezone: null,
     });
     expect(res).toEqual({ id: "dev-1", created: true });
 
@@ -47,6 +49,29 @@ describe("NitropingDevice", () => {
       user_id: "u-1",
       tags: ["beta"],
     });
+  });
+
+  it("auto-reports the device timezone via Intl when not provided", async () => {
+    const spy = mockFetch(() => json({ id: "dev-1", created: true }, 201));
+    const device = new NitropingDevice({ publicKey: "pk_test" });
+
+    await device.registerDevice({ token: "t", platform: "android" });
+
+    const [, init] = spy.mock.calls[0]! as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    // Whatever the test runtime's zone is, it should be a non-empty IANA-ish string.
+    expect(typeof body.timezone).toBe("string");
+    expect(body.timezone.length).toBeGreaterThan(0);
+  });
+
+  it("omits timezone when explicitly set to null", async () => {
+    const spy = mockFetch(() => json({ id: "dev-1", created: true }, 201));
+    const device = new NitropingDevice({ publicKey: "pk_test" });
+
+    await device.registerDevice({ token: "t", platform: "android", timezone: null });
+
+    const [, init] = spy.mock.calls[0]! as [string, RequestInit];
+    expect("timezone" in JSON.parse(init.body as string)).toBe(false);
   });
 
   it("defaults the iOS environment from __DEV__ (sandbox when true)", async () => {

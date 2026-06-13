@@ -25,6 +25,11 @@ export interface UseRegisterDeviceArgs {
    * Android.
    */
   environment?: "sandbox" | "production";
+  /**
+   * IANA timezone for quiet-hours delivery. Omit to auto-detect via `Intl`;
+   * pass `null` to not report one.
+   */
+  timezone?: string | null;
 }
 
 /** State returned by {@link useRegisterDevice}. */
@@ -50,10 +55,10 @@ export function useRegisterDevice(args: UseRegisterDeviceArgs): UseRegisterDevic
     error: null,
   });
 
-  const { token, platform, userId, tags, metadata, environment } = args;
+  const { token, platform, userId, tags, metadata, environment, timezone } = args;
   // Serialize the non-token inputs so the effect re-runs when they change
   // without depending on unstable object identities.
-  const extraKey = JSON.stringify({ platform, userId, tags, metadata, environment });
+  const extraKey = JSON.stringify({ platform, userId, tags, metadata, environment, timezone });
 
   // Track the latest request so a stale refresh can't overwrite a newer one.
   const reqId = useRef(0);
@@ -68,7 +73,7 @@ export function useRegisterDevice(args: UseRegisterDeviceArgs): UseRegisterDevic
     setState((s) => ({ ...s, status: "registering", error: null }));
 
     client
-      .registerDevice({ token, platform, userId, tags, metadata, environment })
+      .registerDevice({ token, platform, userId, tags, metadata, environment, timezone })
       .then((device) => {
         if (id === reqId.current) {
           setState({ device, status: "registered", error: null });

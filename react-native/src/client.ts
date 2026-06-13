@@ -54,6 +54,12 @@ export interface RegisterInput {
    * Ignored for Android.
    */
   environment?: "sandbox" | "production";
+  /**
+   * IANA timezone for quiet-hours delivery (e.g. `"Europe/Istanbul"`). Omit
+   * to let the SDK infer it from the device via `Intl`. Pass `null` to opt
+   * out of reporting a timezone entirely.
+   */
+  timezone?: string | null;
 }
 
 /** Input for {@link NitropingDevice.reportEvent}. */
@@ -98,6 +104,10 @@ export class NitropingDevice {
    * `(app, token, user)`, so calling it again on token refresh is safe.
    */
   async registerDevice(input: RegisterInput): Promise<RegisterDeviceResponse> {
+    // timezone: explicit value wins; `null` opts out; omitted → infer via Intl.
+    const timezone =
+      input.timezone === undefined ? defaultTimezone() : (input.timezone ?? undefined);
+
     return await this.devices.register({
       token: input.token,
       platform: input.platform,
@@ -106,6 +116,7 @@ export class NitropingDevice {
       metadata: input.metadata,
       environment:
         input.platform === "ios" ? (input.environment ?? defaultIosEnvironment()) : undefined,
+      timezone,
     });
   }
 
@@ -138,4 +149,17 @@ export class NitropingDevice {
 function defaultIosEnvironment(): "sandbox" | "production" {
   const dev = (globalThis as { __DEV__?: boolean }).__DEV__;
   return dev === true ? "sandbox" : "production";
+}
+
+/**
+ * Best-effort device timezone via the standard `Intl` API (available in
+ * Hermes / modern RN). Returns `undefined` if it can't be resolved, so a
+ * missing `Intl` never blocks registration.
+ */
+function defaultTimezone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
 }
