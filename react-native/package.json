@@ -1,6 +1,6 @@
 {
   "name": "nitroping-react-native",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "React Native SDK for nitroping push notifications — register device tokens (APNs/FCM) and report engagement. Bring your own token source (Firebase, Expo, or bare).",
   "keywords": [
     "apns",
@@ -56,7 +56,7 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "nitroping": "^0.2.3"
+    "nitroping": "^0.2.4"
   },
   "devDependencies": {
     "@testing-library/react": "^16.1.0",
