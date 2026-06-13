@@ -154,34 +154,38 @@ public struct NitropingPayload: Equatable {
     }
 
     private static func parseActions(userInfo: [String: Any]) -> [NitropingAction] {
-        // APNs path: `actions` is a JSON array of `{id, title}` dicts.
-        if let array = userInfo["actions"] as? [[String: Any]] {
+        // APNs path: `actions` is a JSON array. We cast to `[Any]` (not
+        // `[[String: Any]]`) so a single malformed entry — a bare string, a
+        // dict with the wrong types — doesn't make the whole cast fail and
+        // drop the valid actions. `decode` filters element by element.
+        if let array = userInfo["actions"] as? [Any] {
             return decode(array: array)
         }
         // FCM / Android path: `actions_json` is a JSON-encoded *string*.
         if let raw = userInfo["actions_json"] as? String,
            let data = raw.data(using: .utf8),
-           let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+           let array = try? JSONSerialization.jsonObject(with: data) as? [Any] {
             return decode(array: array)
         }
         // Nested under data.
         if let nested = userInfo["data"] as? [String: Any] {
-            if let array = nested["actions"] as? [[String: Any]] {
+            if let array = nested["actions"] as? [Any] {
                 return decode(array: array)
             }
             if let raw = nested["actions_json"] as? String,
                let data = raw.data(using: .utf8),
-               let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+               let array = try? JSONSerialization.jsonObject(with: data) as? [Any] {
                 return decode(array: array)
             }
         }
         return []
     }
 
-    private static func decode(array: [[String: Any]]) -> [NitropingAction] {
+    private static func decode(array: [Any]) -> [NitropingAction] {
         array.compactMap { item in
-            guard let id = item["id"] as? String,
-                  let title = item["title"] as? String else { return nil }
+            guard let dict = item as? [String: Any],
+                  let id = dict["id"] as? String,
+                  let title = dict["title"] as? String else { return nil }
             return NitropingAction(id: id, title: title)
         }
     }

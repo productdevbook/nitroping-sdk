@@ -7,9 +7,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: react-native
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -17,9 +14,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # No --frozen-lockfile: this package depends on the `nitroping` core by
-      # version range, and the lockfile is not committed (it would pin a
-      # link:../js dev resolution). CI resolves against the published core.
-      - run: pnpm install --no-frozen-lockfile
-      - run: pnpm test
-      - run: pnpm build
+      # Build + link the monorepo's core `nitroping` package so CI tests the
+      # RN package against the in-repo core, not a (possibly older / not-yet-
+      # published) registry version. The committed dependency range
+      # (`nitroping@^x`) is what end users resolve; in-repo we link.
+      - name: Build core (js)
+        working-directory: js
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Install RN against the local core
+        working-directory: react-native
+        # `pnpm add link:` overrides the committed `nitroping@^x` range (which
+        # may not be on the registry yet) and resolves all other deps in one
+        # step. This package.json edit is ephemeral to the CI runner.
+        run: pnpm add "nitroping@link:../js"
+      - name: Test
+        working-directory: react-native
+        run: pnpm test
+      - name: Build
+        working-directory: react-native
+        run: pnpm build
