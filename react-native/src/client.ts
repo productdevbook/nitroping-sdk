@@ -13,7 +13,7 @@
  */
 
 import { DevicesClient, EventsClient, HttpClient } from "nitroping";
-import type { RegisterDeviceResponse } from "nitroping";
+import type { DebugLogger, RegisterDeviceResponse } from "nitroping";
 
 /** Platforms a React Native app registers (no `web`). */
 export type DevicePlatform = "ios" | "android";
@@ -31,6 +31,13 @@ export interface NitropingDeviceOptions {
   timeoutMs?: number;
   /** Custom `fetch` (mainly for tests). */
   fetch?: typeof fetch;
+  /**
+   * Debug logging. `true` logs each request/response to `console.debug`;
+   * pass a function to route structured events anywhere. The API key is
+   * always redacted. Off by default. Handy in a dev build:
+   * `new NitropingDevice({ publicKey, debug: __DEV__ })`.
+   */
+  debug?: boolean | DebugLogger;
 }
 
 /** Input for {@link NitropingDevice.registerDevice}. */
@@ -93,6 +100,7 @@ export class NitropingDevice {
       baseUrl: options.baseUrl,
       timeoutMs: options.timeoutMs,
       fetch: options.fetch,
+      debug: options.debug,
       authScheme: options.publicKey.startsWith("pk_") ? "Public" : "ApiKey",
     });
     this.devices = new DevicesClient(http);

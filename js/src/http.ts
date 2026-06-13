@@ -53,7 +53,30 @@ export interface HttpClientOptions {
    * it itself).
    */
   userAgent?: string
+  /**
+   * Debug logging. The SDK is silent by default. Set:
+   *   * `true`  → log each request/response to `console.debug`.
+   *   * a function → receive structured `{ phase, ... }` events to route
+   *     anywhere (your own logger, Sentry breadcrumbs, etc.).
+   * The `Authorization` header and the API key are always redacted.
+   */
+  debug?: boolean | DebugLogger
 }
+
+/** A structured debug event emitted by the HTTP client. */
+export type DebugEvent =
+  | {
+      phase: "request"
+      method: string
+      url: string
+      headers: Record<string, string>
+      body?: unknown
+    }
+  | { phase: "response"; method: string; url: string; status: number; ms: number; body?: unknown }
+  | { phase: "error"; method: string; url: string; ms: number; error: string }
+
+/** Debug sink. Receives one event per request lifecycle step. */
+export type DebugLogger = (event: DebugEvent) => void
 
 /** Internal: a structured HTTP client. */
 export class HttpClient {
@@ -63,6 +86,7 @@ export class HttpClient {
   readonly fetchImpl: typeof fetch
   readonly authScheme: "ApiKey" | "Public"
   readonly userAgent: string
+  private readonly debug?: DebugLogger
 
   constructor(opts: HttpClientOptions) {
     if (!opts.apiKey) {
@@ -73,6 +97,7 @@ export class HttpClient {
     this.timeoutMs = opts.timeoutMs ?? 30_000
     this.authScheme = opts.authScheme ?? (opts.apiKey.startsWith("pk_") ? "Public" : "ApiKey")
     this.userAgent = opts.userAgent ?? `nitroping-js/${SDK_VERSION}`
+    this.debug = resolveDebug(opts.debug)
 
     const f = opts.fetch ?? globalThis.fetch
     if (typeof f !== "function") {
@@ -118,6 +143,15 @@ export class HttpClient {
     const timer =
       controller !== undefined ? setTimeout(() => controller.abort(), this.timeoutMs) : undefined
 
+    const startedAt = nowMs()
+    this.debug?.({
+      phase: "request",
+      method,
+      url,
+      headers: redactHeaders(headers),
+      body: options.body,
+    })
+
     let response: Response
     try {
       response = await this.fetchImpl(url, {
@@ -127,6 +161,13 @@ export class HttpClient {
         signal: controller?.signal,
       })
     } catch (cause) {
+      this.debug?.({
+        phase: "error",
+        method,
+        url,
+        ms: nowMs() - startedAt,
+        error: (cause as Error)?.message ?? String(cause),
+      })
       throw new NetworkError(
         `Request to ${url} failed: ${(cause as Error)?.message ?? cause}`,
         cause,
@@ -135,7 +176,30 @@ export class HttpClient {
       if (timer !== undefined) clearTimeout(timer)
     }
 
-    return await parseResponse<T>(response)
+    try {
+      const { value, raw } = await parseResponse<T>(response)
+      this.debug?.({
+        phase: "response",
+        method,
+        url,
+        status: response.status,
+        ms: nowMs() - startedAt,
+        body: raw,
+      })
+      return value
+    } catch (err) {
+      // HTTP error envelope (NitropingError) — log it as a response phase so
+      // debug users see the status + server code, then rethrow unchanged.
+      this.debug?.({
+        phase: "response",
+        method,
+        url,
+        status: response.status,
+        ms: nowMs() - startedAt,
+        body: err instanceof NitropingError ? { code: err.code, message: err.message } : undefined,
+      })
+      throw err
+    }
   }
 
   private buildUrl(
@@ -152,7 +216,7 @@ export class HttpClient {
   }
 }
 
-async function parseResponse<T>(response: Response): Promise<T> {
+async function parseResponse<T>(response: Response): Promise<{ value: T; raw: unknown }> {
   const text = await response.text()
   let json: unknown = undefined
   if (text.length > 0) {
@@ -166,7 +230,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
           { status: response.status, code: `http_${response.status}` },
         )
       }
-      return text as unknown as T
+      return { value: text as unknown as T, raw: text }
     }
   }
 
@@ -182,5 +246,38 @@ async function parseResponse<T>(response: Response): Promise<T> {
     })
   }
 
-  return json as T
+  return { value: json as T, raw: json }
+}
+
+/** High-resolution-ish monotonic ms, falling back to Date.now(). */
+function nowMs(): number {
+  return typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now()
+}
+
+/** Strip the Authorization header before it ever reaches a log sink. */
+function redactHeaders(headers: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(headers)) {
+    out[k] = k.toLowerCase() === "authorization" ? "[redacted]" : v
+  }
+  return out
+}
+
+/** Normalize the `debug` option into a logger (or undefined when off). */
+function resolveDebug(debug?: boolean | DebugLogger): DebugLogger | undefined {
+  if (!debug) return undefined
+  if (typeof debug === "function") return debug
+  return (event) => {
+    // Default sink: a single console.debug line per event.
+    const label = `[nitroping] ${event.phase} ${event.method} ${event.url}`
+    if (event.phase === "response") {
+      console.debug(`${label} → ${event.status} (${Math.round(event.ms)}ms)`, event.body ?? "")
+    } else if (event.phase === "error") {
+      console.debug(`${label} ✗ ${event.error} (${Math.round(event.ms)}ms)`)
+    } else {
+      console.debug(label, event.body ?? "")
+    }
+  }
 }
