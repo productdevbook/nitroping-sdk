@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.12] — 2026-06-14
+
+### Fixed
+- **React Native** — `NitropingProvider` now forwards the `debug` option (and the rest of `NitropingDeviceOptions`) to the `NitropingDevice` it builds from inline props. Previously the provider's memoized client only received `publicKey`/`baseUrl`/`timeoutMs`/`fetch`, so `<NitropingProvider publicKey="pk_..." debug>` had no effect. (#16)
+
 ## [0.2.11] — 2026-06-14
 
 ### Added
@@ -27,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Wire-format consistency: every SDK ships a locked HMAC-SHA256 test vector matching the server's signature format (`t=<unix>, v1=<hex>`).
 - Zero or near-zero runtime dependencies in every SDK.
 
-[Unreleased]: https://github.com/productdevbook/nitroping-sdk/compare/v0.2.11...HEAD
+[Unreleased]: https://github.com/productdevbook/nitroping-sdk/compare/v0.2.12...HEAD
+[0.2.12]: https://github.com/productdevbook/nitroping-sdk/releases/tag/v0.2.12
 [0.2.11]: https://github.com/productdevbook/nitroping-sdk/releases/tag/v0.2.11
 [0.1.0]: https://github.com/productdevbook/nitroping-sdk/releases/tag/v0.1.0
