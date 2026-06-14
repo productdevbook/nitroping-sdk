@@ -200,7 +200,7 @@ internal class HttpTransport(
         URLEncoder.encode(s, Charsets.UTF_8).replace("+", "%20")
 
     internal companion object {
-        const val SDK_VERSION: String = "0.2.11"
+        const val SDK_VERSION: String = "0.2.12"
 
         private fun defaultClient(timeoutMs: Long): HttpClient =
             HttpClient.newBuilder()
