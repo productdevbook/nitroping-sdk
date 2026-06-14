@@ -35,6 +35,7 @@ export function NitropingProvider(props: NitropingProviderProps): ReactElement {
       baseUrl: props.baseUrl,
       timeoutMs: props.timeoutMs,
       fetch: props.fetch,
+      debug: props.debug,
     });
     // Rebuild only when the connection-defining options change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -42,6 +43,7 @@ export function NitropingProvider(props: NitropingProviderProps): ReactElement {
     "client" in props ? props.client : undefined,
     "publicKey" in props ? props.publicKey : undefined,
     "baseUrl" in props ? props.baseUrl : undefined,
+    "debug" in props ? props.debug : undefined,
   ]);
 
   return createElement(NitropingContext.Provider, { value: client }, children);

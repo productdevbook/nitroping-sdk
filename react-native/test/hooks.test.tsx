@@ -103,4 +103,22 @@ describe("NitropingProvider with options", () => {
     );
     expect(container.textContent).toBe("hi");
   });
+
+  it("forwards the debug option to the client it builds (#16)", async () => {
+    mockFetch(() => json({ id: "dev-1", created: true }, 201));
+    const logger = vi.fn();
+
+    const { result } = renderHook(() => useNitroping(), {
+      wrapper: ({ children }: { children: ReactNode }) =>
+        createElement(NitropingProvider, { publicKey: "pk_x", debug: logger }, children),
+    });
+
+    expect(result.current).toBeInstanceOf(NitropingDevice);
+
+    // The debug logger must reach the underlying HTTP client → it fires on the
+    // register request. Before the fix the provider's useMemo dropped `debug`,
+    // so the logger was never called.
+    await result.current.registerDevice({ token: "tok-dbg", platform: "ios" });
+    expect(logger).toHaveBeenCalled();
+  });
 });
