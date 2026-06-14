@@ -136,7 +136,7 @@ Creates a synchronous server-side client. `api_key` falls back to the
 | `api_key`    | `$NITROPING_API_KEY`       | Secret key, format `np_...`.          |
 | `base_url`   | `"https://nitroping.dev"`  | Override for self-hosted / staging.   |
 | `timeout`    | `30.0` seconds             | Per-request socket timeout.           |
-| `user_agent` | `"nitroping-python/0.1.0"` | Sent on every request.                |
+| `user_agent` | `"nitroping-python/0.2.12"` | Sent on every request.                |
 
 ### `np.notifications.send(*, target, title=None, body=None, ..., idempotency_key=None)`
 

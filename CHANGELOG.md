@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] — 2026-05-23
 
 ### Added
-- Initial release of nitroping SDKs across six languages:
+- Initial release of nitroping SDKs across six languages (the React Native SDK was added in a later release):
   - **JavaScript / TypeScript** (`js/`): server client + browser web push subscribe + webhook verifier
   - **Swift** (`swift/`): iOS / macOS / watchOS / tvOS / visionOS — device registration, notification payload parser, webhook verifier
   - **Python** (`python/`): server client + webhook verifier — sync + async

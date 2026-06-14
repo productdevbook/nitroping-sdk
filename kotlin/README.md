@@ -35,7 +35,7 @@ Kotlin backend that *sends* pushes and an Android app that *receives* them).
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("dev.nitroping:nitroping:0.1.0")
+    implementation("dev.nitroping:nitroping:0.2.12")
 }
 ```
 
@@ -44,7 +44,7 @@ dependencies {
 ```kotlin
 // build.gradle.kts (Android app module)
 dependencies {
-    implementation("dev.nitroping:nitroping-android:0.1.0")
+    implementation("dev.nitroping:nitroping-android:0.2.12")
     // ^ transitively brings in dev.nitroping:nitroping
 }
 ```
