@@ -20,7 +20,7 @@ use Productdevbook\Nitroping\Exceptions\NitropingException;
 final class CurlTransport implements HttpTransport
 {
     public const DEFAULT_BASE_URL = 'https://nitroping.dev';
-    public const SDK_VERSION = '0.2.10';
+    public const SDK_VERSION = '0.2.11';
 
     private readonly string $baseUrl;
 
