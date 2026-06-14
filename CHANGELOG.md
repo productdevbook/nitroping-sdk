@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **JavaScript / TypeScript** — `nitroping/widgets`: two drop-in, framework-agnostic browser UI components (plain DOM, no framework dependency, one injected stylesheet, public `pk_` auth):
+  - `mountPushPrompt()` — a web-push opt-in card that runs the full `subscribeWebPush` flow on click and auto-hides when push is unsupported or the user has already decided.
+  - `mountInboxBell()` — a notification bell with an unread badge + dropdown inbox; polls the unread count, lazy-loads the list on open, and marks items read on click. Returns a handle with `refresh()` / `unmount()`. Both accept theme overrides.
+
 ## [0.1.0] — 2026-05-23
 
 ### Added

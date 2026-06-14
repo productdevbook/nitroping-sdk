@@ -125,13 +125,49 @@ export async function POST(request: Request) {
 }
 ```
 
+### Drop-in UI widgets (browser)
+
+`nitroping/widgets` ships two ready-made, framework-agnostic components (plain
+DOM, no framework dependency, one injected stylesheet). Both use a **public**
+`pk_` key.
+
+```ts
+import { mountInboxBell, mountPushPrompt } from "nitroping/widgets"
+
+// A web-push opt-in card. Auto-hides when push is unsupported or the user has
+// already decided. Runs the full subscribeWebPush flow on click.
+mountPushPrompt({
+  target: "#push-prompt",
+  publicKey: "pk_live_...",
+  appId: "0e1d2c3b-4a59-6877-9876-543210abcdef",
+  userId: "user-42",
+})
+
+// A notification bell with an unread badge + dropdown inbox. Polls the unread
+// count, lazy-loads the list on open, marks items read on click.
+const bell = mountInboxBell({
+  target: "#inbox-bell",
+  publicKey: "pk_live_...",
+  userId: "user-42",
+  onItemClick: (item) => {
+    /* return false to suppress the default deep-link navigation */
+  },
+})
+
+// Theme + lifecycle
+// mountInboxBell({ ..., theme: { accent: "#16a34a" }, pollIntervalMs: 15000 })
+// bell.refresh()  // force a re-poll
+// bell.unmount()  // detach timers + remove from the DOM
+```
+
 ## Tree shaking
 
-Three independent entry points — import only what you need:
+Four independent entry points — import only what you need:
 
 ```ts
 import { Nitroping } from "nitroping" // server: send + devices
 import { subscribeWebPush } from "nitroping/web" // browser: subscribe + register
+import { mountInboxBell, mountPushPrompt } from "nitroping/widgets" // browser: UI
 import { verifyWebhook } from "nitroping/webhooks" // server: webhook verify
 ```
 

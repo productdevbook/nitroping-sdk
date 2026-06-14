@@ -42,6 +42,10 @@
       "types": "./dist/web.d.mts",
       "default": "./dist/web.mjs"
     },
+    "./widgets": {
+      "types": "./dist/widgets.d.mts",
+      "default": "./dist/widgets.mjs"
+    },
     "./webhooks": {
       "types": "./dist/webhooks.d.mts",
       "default": "./dist/webhooks.mjs"
@@ -66,6 +70,7 @@
     "@typescript/native-preview": "7.0.0-dev.20260316.1",
     "@vitest/coverage-v8": "^4.1.1",
     "bumpp": "^11.0.1",
+    "happy-dom": "^20.10.3",
     "obuild": "^0.4.32",
     "oxfmt": "^0.42.0",
     "oxlint": "^1.57.0",
