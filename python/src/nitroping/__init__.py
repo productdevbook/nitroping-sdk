@@ -62,7 +62,7 @@ from .types import (
     WebhookEvent,
 )
 
-__version__ = "0.2.12"
+__version__ = "0.2.13"
 
 __all__ = [
     "DEFAULT_BASE_URL",

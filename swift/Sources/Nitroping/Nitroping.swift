@@ -31,7 +31,7 @@ import Foundation
 /// "registered from nitroping-swift/0.2.3".
 public enum NitropingSDK {
     /// Semantic version. Bump in lock-step with git tags.
-    public static let version = "0.2.12"
+    public static let version = "0.2.13"
 
     /// Default base URL. Overridable on `NitropingClient.init` for staging /
     /// self-hosted deployments.
