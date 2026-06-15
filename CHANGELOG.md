@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.13] — 2026-06-15
+
 ### Added
 - **All server SDKs** (JavaScript/TypeScript, Go, Python, PHP, Kotlin, Swift) — coverage for the new device + notification API surface:
   - **List devices** — `GET /api/v1/devices` (secret key), filterable by `user_id`, `platform`, `status`, with pagination. Returns the app's devices without ever exposing the push token. (e.g. JS `devices.list({ userId })`)
