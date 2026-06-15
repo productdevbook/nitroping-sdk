@@ -112,6 +112,12 @@ public data class SendRequest(
     /** URL or app deep link opened when the user taps the notification. */
     public val deepLink: String? = null,
     public val actions: List<Action>? = null,
+    /**
+     * iOS only. Sets `aps.category` verbatim so an app that registered a
+     * matching `UNNotificationCategory` renders the action buttons.
+     * Overrides the server-minted category for this message.
+     */
+    public val apnsCategory: String? = null,
     /** ISO-8601 timestamp. The row is held until then by the cron worker. */
     public val scheduledAt: String? = null,
     /** ISO-8601 timestamp. After this the notification is dropped. */
@@ -177,6 +183,42 @@ public data class DeviceResult(
     public val id: String,
     /** `true` if the device row was created on this request; `false` on idempotent replay. */
     public val created: Boolean,
+)
+
+/**
+ * One device in a `GET /api/v1/devices` listing.
+ *
+ * The push token is **never** returned by the listing endpoint — only the
+ * metadata below. To remove a device you know the token for but not the id,
+ * use [Devices.deactivateByToken].
+ */
+public data class DeviceSummary(
+    /** UUID of the device row. */
+    public val id: String,
+    /** Opaque tenant-side user id, or null when the device isn't bound to a user. */
+    public val userId: String?,
+    /** Device platform. */
+    public val platform: Platform,
+    /** `"active"` or `"inactive"` (soft-deleted). */
+    public val status: String,
+    /** Segmentation labels attached to the device. */
+    public val tags: List<String>,
+    /** IANA timezone of the device, or null when unreported. */
+    public val timezone: String?,
+    /** iOS APNs environment (`"sandbox"`/`"production"`), or null for non-iOS / unreported. */
+    public val apnsEnvironment: String?,
+    /** ISO-8601 timestamp the device was last seen, or null if never. */
+    public val lastSeenAt: String?,
+    /** ISO-8601 timestamp the device row was created. */
+    public val insertedAt: String,
+)
+
+/** Response from `GET /api/v1/devices` (device listing). */
+public data class ListDevicesResult(
+    /** The page of devices. */
+    public val data: List<DeviceSummary>,
+    /** Total number of devices matching the filter (across all pages). */
+    public val total: Int,
 )
 
 /** Response from `DELETE /api/v1/devices/:id`. */

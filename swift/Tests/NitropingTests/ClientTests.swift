@@ -517,6 +517,196 @@ final class ClientTests: XCTestCase {
         XCTAssertEqual(json["timezone"] as? String, "Europe/Istanbul")
     }
 
+    // MARK: - Device list
+
+    func testDeviceListSendsQueryAndDecodes() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 200,
+            body: Data(#"""
+            {"data":[
+              {"id":"dev_1","user_id":"alice","platform":"ios","status":"active","tags":["premium"],"timezone":"Europe/Istanbul","apns_environment":"production","last_seen_at":"2026-06-14T10:00:00Z","inserted_at":"2026-06-01T09:00:00Z"},
+              {"id":"dev_2","user_id":null,"platform":"web","status":"inactive","tags":[],"timezone":null,"apns_environment":null,"last_seen_at":null,"inserted_at":"2026-06-02T09:00:00Z"}
+            ],"total":2}
+            """#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makeClient()
+        let response = try await client.devices.list(
+            .init(userId: "alice", platform: .ios, status: .active, page: 2, pageSize: 10)
+        )
+
+        XCTAssertEqual(response.total, 2)
+        XCTAssertEqual(response.data.count, 2)
+
+        let first = response.data[0]
+        XCTAssertEqual(first.id, "dev_1")
+        XCTAssertEqual(first.userId, "alice")
+        XCTAssertEqual(first.platform, .ios)
+        XCTAssertEqual(first.status, .active)
+        XCTAssertEqual(first.tags, ["premium"])
+        XCTAssertEqual(first.timezone, "Europe/Istanbul")
+        XCTAssertEqual(first.apnsEnvironment, .production)
+        XCTAssertEqual(first.lastSeenAt, "2026-06-14T10:00:00Z")
+        XCTAssertEqual(first.insertedAt, "2026-06-01T09:00:00Z")
+
+        let second = response.data[1]
+        XCTAssertEqual(second.id, "dev_2")
+        XCTAssertNil(second.userId)
+        XCTAssertEqual(second.platform, .web)
+        XCTAssertEqual(second.status, .inactive)
+        XCTAssertEqual(second.tags, [])
+        XCTAssertNil(second.timezone)
+        XCTAssertNil(second.apnsEnvironment)
+        XCTAssertNil(second.lastSeenAt)
+
+        let req = try XCTUnwrap(URLProtocolStub.lastRequest)
+        XCTAssertEqual(req.httpMethod, "GET")
+        XCTAssertEqual(req.url?.path, "/api/v1/devices")
+        let components = try XCTUnwrap(URLComponents(url: try XCTUnwrap(req.url), resolvingAgainstBaseURL: false))
+        let queryItems = components.queryItems ?? []
+        func queryValue(_ name: String) -> String? {
+            queryItems.first { $0.name == name }?.value
+        }
+        XCTAssertEqual(queryValue("user_id"), "alice")
+        XCTAssertEqual(queryValue("platform"), "ios")
+        XCTAssertEqual(queryValue("status"), "active")
+        XCTAssertEqual(queryValue("page"), "2")
+        XCTAssertEqual(queryValue("page_size"), "10")
+    }
+
+    func testDeviceSummaryHasNoTokenField() throws {
+        // The list endpoint never returns the push token. Decoding a row that
+        // (hypothetically) carried one must still succeed and expose no token,
+        // and the type must have no member that would surface it.
+        let json = Data(#"""
+        {"id":"dev_1","user_id":null,"platform":"ios","status":"active","tags":[],"timezone":null,"apns_environment":null,"last_seen_at":null,"inserted_at":"2026-06-01T09:00:00Z","token":"should-be-ignored"}
+        """#.utf8)
+        let summary = try JSONDecoder().decode(DeviceSummary.self, from: json)
+        XCTAssertEqual(summary.id, "dev_1")
+
+        // Round-trip the encoded form and confirm no `token` key is produced.
+        let encoded = try JSONEncoder().encode(summary)
+        let dict = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertNil(dict["token"])
+        // Mirror confirms the struct declares no `token` stored property.
+        let labels = Mirror(reflecting: summary).children.compactMap(\.label)
+        XCTAssertFalse(labels.contains("token"))
+    }
+
+    func testDeviceListNoQueryOmitsQueryString() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 200,
+            body: Data(#"{"data":[],"total":0}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makeClient()
+        let response = try await client.devices.list()
+        XCTAssertEqual(response.total, 0)
+        XCTAssertTrue(response.data.isEmpty)
+
+        let req = try XCTUnwrap(URLProtocolStub.lastRequest)
+        XCTAssertEqual(req.url?.path, "/api/v1/devices")
+        let components = try XCTUnwrap(URLComponents(url: try XCTUnwrap(req.url), resolvingAgainstBaseURL: false))
+        XCTAssertNil(components.queryItems)
+    }
+
+    // MARK: - Device deactivate-by-token
+
+    func testDeviceDeactivateByTokenSendsBodyAndDecodes() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 200,
+            body: Data(#"{"id":"dev_9","status":"inactive"}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makeClient()
+        let response = try await client.devices.deactivateByToken("apns-token-xyz")
+
+        XCTAssertEqual(response.id, "dev_9")
+        XCTAssertEqual(response.status, "inactive")
+
+        let req = try XCTUnwrap(URLProtocolStub.lastRequest)
+        XCTAssertEqual(req.httpMethod, "DELETE")
+        // No id in the path — deactivate-by-token hits the collection route.
+        XCTAssertEqual(req.url?.path, "/api/v1/devices")
+
+        let bodyData = try XCTUnwrap(URLProtocolStub.lastBody)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+        XCTAssertEqual(json["token"] as? String, "apns-token-xyz")
+        XCTAssertNil(json["id"])
+    }
+
+    func testDeviceDeactivateByTokenNotFound() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 404,
+            body: Data(#"{"error":{"code":"not_found","message":"Device not found"}}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makeClient()
+        do {
+            _ = try await client.devices.deactivateByToken("nope")
+            XCTFail("expected throw")
+        } catch let NitropingError.notFound(message) {
+            XCTAssertEqual(message, "Device not found")
+        } catch {
+            XCTFail("wrong error: \(error)")
+        }
+    }
+
+    func testDeviceDeactivateByTokenEmptyFailsLocally() async throws {
+        let client = makeClient()
+        do {
+            _ = try await client.devices.deactivateByToken("")
+            XCTFail("expected throw")
+        } catch let NitropingError.validation(message) {
+            XCTAssertTrue(message.contains("token"))
+        }
+        XCTAssertNil(URLProtocolStub.lastRequest)
+    }
+
+    // MARK: - apns_category
+
+    func testNotificationCreateEncodesApnsCategory() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 201,
+            body: Data(#"{"id":"notif_cat","status":"queued"}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makeClient()
+        _ = try await client.notifications.create(
+            .init(
+                title: "Refunded",
+                body: "Your order was refunded",
+                target: .all,
+                apnsCategory: "order_refund"
+            )
+        )
+
+        let bodyData = try XCTUnwrap(URLProtocolStub.lastBody)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+        XCTAssertEqual(json["apns_category"] as? String, "order_refund")
+        XCTAssertNil(json["apnsCategory"])
+    }
+
+    func testNotificationCreateOmitsNilApnsCategory() async throws {
+        URLProtocolStub.nextStub = .init(
+            status: 201,
+            body: Data(#"{"id":"notif_nocat","status":"queued"}"#.utf8),
+            headers: ["Content-Type": "application/json"]
+        )
+
+        let client = makeClient()
+        _ = try await client.notifications.create(.init(title: "Hi", body: nil, target: .all))
+
+        let bodyData = try XCTUnwrap(URLProtocolStub.lastBody)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+        XCTAssertNil(json["apns_category"])
+    }
+
     // MARK: - Inbox
 
     func testInboxListSendsQueryAndDecodes() async throws {

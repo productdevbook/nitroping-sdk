@@ -135,10 +135,60 @@ class UpdateDeviceResult(TypedDict):
 
 
 class DeactivateDeviceResult(TypedDict):
-    """Response from ``DELETE /api/v1/devices/:id``."""
+    """Response from ``DELETE /api/v1/devices/:id`` and ``DELETE
+    /api/v1/devices`` (deactivate-by-token)."""
 
     id: str
     status: str
+
+
+class ListDevicesQuery(TypedDict, total=False):
+    """Query filters for ``GET /api/v1/devices`` (list). All optional."""
+
+    #: Only this tenant-side user's devices.
+    user_id: str
+    #: Filter by platform.
+    platform: Platform
+    #: Filter by status.
+    status: Literal["active", "inactive"]
+    #: 1-based page number.
+    page: int
+    #: Rows per page (server caps at 100).
+    page_size: int
+
+
+class DeviceSummary(TypedDict):
+    """One device in a ``GET /api/v1/devices`` listing.
+
+    The push token is **never** returned by the listing endpoint, so it
+    has no place in this type.
+    """
+
+    #: UUID of the device row.
+    id: str
+    #: Opaque tenant-side user id, or ``None``.
+    user_id: str | None
+    platform: Platform
+    status: Literal["active", "inactive"]
+    #: Tags attached for tag-based targeting.
+    tags: list[str]
+    #: IANA timezone name, or ``None``.
+    timezone: str | None
+    #: APNs environment for iOS tokens (``"sandbox"`` / ``"production"``),
+    #: or ``None``.
+    apns_environment: Literal["sandbox", "production"] | None
+    #: ISO-8601 timestamp of the last delivery activity, or ``None``.
+    last_seen_at: str | None
+    #: ISO-8601 timestamp the device row was created.
+    inserted_at: str
+
+
+class ListDevicesResult(TypedDict):
+    """Response from ``GET /api/v1/devices``."""
+
+    data: list[DeviceSummary]
+    #: Total number of matching devices (across all pages).
+    total: int
 
 
 class CancelNotificationResult(TypedDict):

@@ -64,6 +64,24 @@ def test_send_posts_correct_headers_and_body(mock_urlopen):
     }
 
 
+def test_send_maps_apns_category_to_wire(mock_urlopen):
+    """apns_category kwarg lands on the wire as snake_case apns_category."""
+    mock_urlopen.enqueue_json(201, {"id": "n-cat", "status": "queued"})
+
+    np = Nitroping(api_key="np_x")
+    np.notifications.send(
+        title="Refund",
+        body="Approve?",
+        actions=[{"id": "approve", "title": "Approve"}],
+        apns_category="order_refund",
+        target={"all": True},
+    )
+
+    body = mock_urlopen.calls[0].body_json
+    assert body is not None
+    assert body["apns_category"] == "order_refund"
+
+
 def test_send_forwards_idempotency_key(mock_urlopen):
     """idempotency_key kwarg → Idempotency-Key header on the wire."""
     mock_urlopen.enqueue_json(201, {"id": "n1", "status": "queued"})

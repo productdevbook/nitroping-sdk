@@ -9,8 +9,9 @@ use Productdevbook\Nitroping\Internal\HttpTransport;
 /**
  * `devices` resource — mounted on {@see Nitroping} as `$np->devices`.
  *
- * Wraps `POST /api/v1/devices`, `PUT /api/v1/devices/:id`,
- * `DELETE /api/v1/devices/:id`, and the public
+ * Wraps `GET /api/v1/devices`, `POST /api/v1/devices`,
+ * `PUT /api/v1/devices/:id`, `DELETE /api/v1/devices/:id`,
+ * `DELETE /api/v1/devices` (by token), and the public
  * `GET /api/v1/public/apps/:id/vapid` key lookup.
  */
 final class DevicesService
@@ -99,6 +100,90 @@ final class DevicesService
     }
 
     /**
+     * List devices for your app (secret API key only).
+     *
+     * Wraps `GET /api/v1/devices`. Every filter is optional; pass `userId`
+     * to fetch a single end-user's registered devices. The push token is
+     * **never** returned in the listing.
+     *
+     * `platform` filters by `'ios'`, `'android'`, or `'web'`; `status`
+     * filters by `'active'` or `'inactive'`. `page` is 1-based and
+     * `pageSize` is rows-per-page (the server caps it at 100).
+     *
+     * Returns the camelCased listing:
+     *
+     * ```php
+     * [
+     *     'data' => [
+     *         [
+     *             'id' => string,
+     *             'userId' => ?string,
+     *             'platform' => 'ios'|'android'|'web',
+     *             'status' => 'active'|'inactive',
+     *             'tags' => list<string>,
+     *             'timezone' => ?string,
+     *             'apnsEnvironment' => 'sandbox'|'production'|null,
+     *             'lastSeenAt' => ?string,
+     *             'insertedAt' => string,
+     *         ],
+     *         // ...
+     *     ],
+     *     'total' => int,
+     * ]
+     * ```
+     *
+     * @return array{data: list<array<string, mixed>>, total: int}
+     */
+    public function list(
+        ?string $userId = null,
+        ?string $platform = null,
+        ?string $status = null,
+        ?int $page = null,
+        ?int $pageSize = null,
+    ): array {
+        $query = [];
+        if ($userId !== null) {
+            $query['user_id'] = $userId;
+        }
+        if ($platform !== null) {
+            $query['platform'] = $platform;
+        }
+        if ($status !== null) {
+            $query['status'] = $status;
+        }
+        if ($page !== null) {
+            $query['page'] = (string) $page;
+        }
+        if ($pageSize !== null) {
+            $query['page_size'] = (string) $pageSize;
+        }
+
+        $path = '/api/v1/devices';
+        if ($query !== []) {
+            $path .= '?' . http_build_query($query);
+        }
+
+        $raw = $this->transport->request(
+            method: 'GET',
+            path: $path,
+        );
+
+        $rows = (isset($raw['data']) && is_array($raw['data'])) ? $raw['data'] : [];
+        $data = [];
+        foreach ($rows as $row) {
+            if (is_array($row)) {
+                /** @var array<string, mixed> $row */
+                $data[] = self::deviceFromWire($row);
+            }
+        }
+
+        return [
+            'data' => $data,
+            'total' => is_int($raw['total'] ?? null) ? $raw['total'] : count($data),
+        ];
+    }
+
+    /**
      * Deactivate a device (soft delete — sets `status = inactive`).
      *
      * Returns `['id' => string, 'status' => 'inactive']`. Throws an
@@ -112,6 +197,26 @@ final class DevicesService
         return $this->transport->request(
             method: 'DELETE',
             path: '/api/v1/devices/' . rawurlencode($deviceId),
+        );
+    }
+
+    /**
+     * Deactivate a device by its provider token (logout flow — you know the
+     * token but not the device id).
+     *
+     * Wraps `DELETE /api/v1/devices` with a `['token' => ...]` JSON body (no
+     * id in the path). Returns `['id' => string, 'status' => 'inactive']`.
+     * Throws an {@see \Productdevbook\Nitroping\Exceptions\ApiException} with
+     * `code: "not_found"` when no device with that token belongs to your app.
+     *
+     * @return array<string, mixed>
+     */
+    public function deactivateByToken(string $token): array
+    {
+        return $this->transport->request(
+            method: 'DELETE',
+            path: '/api/v1/devices',
+            body: ['token' => $token],
         );
     }
 
@@ -151,5 +256,28 @@ final class DevicesService
             method: 'GET',
             path: '/api/v1/public/apps/' . rawurlencode($appId) . '/vapid',
         );
+    }
+
+    /**
+     * Translate one snake_case device summary row from the wire into the
+     * camelCase shape the SDK exposes. The push token is never present.
+     *
+     * @param array<string, mixed> $row
+     *
+     * @return array<string, mixed>
+     */
+    private static function deviceFromWire(array $row): array
+    {
+        return [
+            'id' => $row['id'] ?? null,
+            'userId' => $row['user_id'] ?? null,
+            'platform' => $row['platform'] ?? null,
+            'status' => $row['status'] ?? null,
+            'tags' => $row['tags'] ?? [],
+            'timezone' => $row['timezone'] ?? null,
+            'apnsEnvironment' => $row['apns_environment'] ?? null,
+            'lastSeenAt' => $row['last_seen_at'] ?? null,
+            'insertedAt' => $row['inserted_at'] ?? null,
+        ];
     }
 }

@@ -173,3 +173,105 @@ describe("devices.deactivate", () => {
     }
   })
 })
+
+describe("devices.list", () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it("GETs /api/v1/devices with snake_case query and camelCases the rows", async () => {
+    const spy = mockFetch(
+      () =>
+        new Response(
+          JSON.stringify({
+            data: [
+              {
+                id: "dev-1",
+                user_id: "alice",
+                platform: "ios",
+                status: "active",
+                tags: ["vip"],
+                timezone: "Europe/Istanbul",
+                apns_environment: "production",
+                last_seen_at: "2026-06-15T00:00:00Z",
+                inserted_at: "2026-06-14T00:00:00Z",
+              },
+            ],
+            total: 1,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+    )
+
+    const np = new Nitroping({ apiKey: "np_x" })
+    const res = await np.devices.list({ userId: "alice", platform: "ios", pageSize: 10 })
+
+    expect(res.total).toBe(1)
+    expect(res.data[0]).toEqual({
+      id: "dev-1",
+      userId: "alice",
+      platform: "ios",
+      status: "active",
+      tags: ["vip"],
+      timezone: "Europe/Istanbul",
+      apnsEnvironment: "production",
+      lastSeenAt: "2026-06-15T00:00:00Z",
+      insertedAt: "2026-06-14T00:00:00Z",
+    })
+
+    const url = spy.mock.calls[0]![0] as string
+    expect(url).toContain("/api/v1/devices?")
+    expect(url).toContain("user_id=alice")
+    expect(url).toContain("platform=ios")
+    expect(url).toContain("page_size=10")
+    expect(spy.mock.calls[0]![1]!.method).toBe("GET")
+  })
+
+  it("returns an empty listing as { data: [], total: 0 }", async () => {
+    mockFetch(
+      () =>
+        new Response(JSON.stringify({ data: [], total: 0 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    )
+
+    const np = new Nitroping({ apiKey: "np_x" })
+    const res = await np.devices.list()
+    expect(res).toEqual({ data: [], total: 0 })
+  })
+})
+
+describe("devices.deactivateByToken", () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it("DELETEs /api/v1/devices with a { token } body", async () => {
+    const spy = mockFetch(
+      () =>
+        new Response(JSON.stringify({ id: "dev-9", status: "inactive" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    )
+
+    const np = new Nitroping({ apiKey: "np_x" })
+    const res = await np.devices.deactivateByToken("apns-token-xyz")
+
+    expect(res).toEqual({ id: "dev-9", status: "inactive" })
+    expect(spy.mock.calls[0]![0] as string).toBe("https://nitroping.dev/api/v1/devices")
+    const init = spy.mock.calls[0]![1]!
+    expect(init.method).toBe("DELETE")
+    expect(JSON.parse(init.body as string)).toEqual({ token: "apns-token-xyz" })
+  })
+
+  it("throws not_found when no device matches the token", async () => {
+    mockFetch(
+      () =>
+        new Response(
+          JSON.stringify({ error: { code: "not_found", message: "Device not found" } }),
+          { status: 404, headers: { "Content-Type": "application/json" } },
+        ),
+    )
+
+    const np = new Nitroping({ apiKey: "np_x" })
+    await expect(np.devices.deactivateByToken("nope")).rejects.toMatchObject({ code: "not_found" })
+  })
+})

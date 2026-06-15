@@ -216,6 +216,63 @@ final class NotificationsServiceTest extends TestCase
         ], $body['target']);
     }
 
+    public function testSendForwardsApnsCategoryAsSnakeCase(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['id' => 'n1', 'status' => 'queued']);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+
+        $np->notifications->send(
+            title: 'Refund issued',
+            body: 'Your refund is on its way',
+            target: ['all' => true],
+            apnsCategory: 'order_refund',
+        );
+
+        $body = $mock->calls[0]['body'];
+        self::assertNotNull($body);
+        self::assertSame('order_refund', $body['apns_category']);
+        self::assertArrayNotHasKey('apnsCategory', $body);
+    }
+
+    public function testSendOmitsApnsCategoryWhenNotProvided(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['id' => 'n1', 'status' => 'queued']);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+
+        $np->notifications->send(
+            title: 'x',
+            body: 'y',
+            target: ['all' => true],
+        );
+
+        $body = $mock->calls[0]['body'];
+        self::assertNotNull($body);
+        self::assertArrayNotHasKey('apns_category', $body);
+    }
+
+    public function testSendRequestForwardsApnsCategory(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['id' => 'n1', 'status' => 'queued']);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+
+        $np->notifications->sendRequest(new \Productdevbook\Nitroping\Models\SendRequest(
+            target: ['all' => true],
+            title: 'x',
+            body: 'y',
+            apnsCategory: 'order_refund',
+        ));
+
+        $body = $mock->calls[0]['body'];
+        self::assertNotNull($body);
+        self::assertSame('order_refund', $body['apns_category']);
+    }
+
     public function testCancelSendsDelete(): void
     {
         $mock = new MockTransport();

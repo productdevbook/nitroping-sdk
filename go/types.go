@@ -166,6 +166,11 @@ type SendRequest struct {
 	DeepLink *string `json:"deep_link,omitempty"`
 	// Actions are the action buttons (where supported).
 	Actions []Action `json:"actions,omitempty"`
+	// APNsCategory is iOS only. Sets aps.category verbatim so an app that
+	// registered a matching UNNotificationCategory renders the action
+	// buttons. Overrides the server-minted category for this message.
+	// Omitted from the wire body when empty.
+	APNsCategory *string `json:"apns_category,omitempty"`
 	// ScheduledAt is an ISO-8601 timestamp; the row is held until then
 	// by the cron worker.
 	ScheduledAt *string `json:"scheduled_at,omitempty"`
@@ -266,6 +271,61 @@ type UpdateDeviceResult struct {
 	ID string `json:"id"`
 	// Tags are the device's tags after the update.
 	Tags []string `json:"tags"`
+}
+
+// ListDevicesQuery holds the optional filters for
+// Client.Devices.List (GET /api/v1/devices). All fields are optional;
+// the zero value lists every device. Pointer fields (Page, PageSize)
+// distinguish "unset" from an explicit zero.
+type ListDevicesQuery struct {
+	// UserID, when non-empty, restricts the listing to one tenant-side
+	// user's devices.
+	UserID string
+	// Platform, when non-empty, filters by push platform (ios|android|web).
+	Platform Platform
+	// Status, when non-empty, filters by status ("active" or "inactive").
+	Status string
+	// Page is the 1-based page number. Omitted from the query when nil.
+	Page *int
+	// PageSize is the number of rows per page (server caps at 100).
+	// Omitted from the query when nil.
+	PageSize *int
+}
+
+// DeviceSummary is one device row in a GET /api/v1/devices listing. The
+// push token is never returned by this endpoint, so there is
+// deliberately no token field here. Nullable server fields are modelled
+// as *string so a JSON null is distinguishable from an empty string.
+type DeviceSummary struct {
+	// ID is the UUID of the device row.
+	ID string `json:"id"`
+	// UserID is the opaque tenant-side user id, or nil if unset.
+	UserID *string `json:"user_id"`
+	// Platform is the device's push platform.
+	Platform Platform `json:"platform"`
+	// Status is "active" or "inactive".
+	Status string `json:"status"`
+	// Tags are the device's tags.
+	Tags []string `json:"tags"`
+	// Timezone is the device's IANA timezone, or nil if unset.
+	Timezone *string `json:"timezone"`
+	// APNsEnvironment is the iOS APNs environment ("sandbox" or
+	// "production"), or nil for non-iOS devices.
+	APNsEnvironment *string `json:"apns_environment"`
+	// LastSeenAt is the ISO-8601 timestamp the device was last seen, or
+	// nil if never.
+	LastSeenAt *string `json:"last_seen_at"`
+	// InsertedAt is the ISO-8601 timestamp the device row was created.
+	InsertedAt string `json:"inserted_at"`
+}
+
+// ListDevicesResult is the response from GET /api/v1/devices.
+type ListDevicesResult struct {
+	// Data is the page of device summaries.
+	Data []DeviceSummary `json:"data"`
+	// Total is the total number of devices matching the query (across all
+	// pages).
+	Total int `json:"total"`
 }
 
 // TrackEvent is the delivery-tracking event type for POST /api/v1/track.

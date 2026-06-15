@@ -17,6 +17,7 @@ from .types import (
     CancelNotificationResult,
     DeactivateDeviceResult,
     EngagementEvent,
+    ListDevicesResult,
     NotificationAction,
     NotificationResult,
     NotificationTarget,
@@ -117,6 +118,7 @@ class _AsyncNotificationsClient:
         click_action: str | None = None,
         deep_link: str | None = None,
         actions: list[NotificationAction] | None = None,
+        apns_category: str | None = None,
         scheduled_at: str | None = None,
         expires_at: str | None = None,
         recurrence: str | None = None,
@@ -140,6 +142,7 @@ class _AsyncNotificationsClient:
                 click_action=click_action,
                 deep_link=deep_link,
                 actions=actions,
+                apns_category=apns_category,
                 scheduled_at=scheduled_at,
                 expires_at=expires_at,
                 recurrence=recurrence,
@@ -214,6 +217,35 @@ class _AsyncDevicesClient:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None, self._inner.deactivate, device_id
+        )
+
+    async def deactivate_by_token(self, token: str) -> DeactivateDeviceResult:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, self._inner.deactivate_by_token, token
+        )
+
+    # Defined last so ``list`` does not shadow the builtin in the
+    # ``list[str]`` annotations on the methods above.
+    async def list(
+        self,
+        *,
+        user_id: str | None = None,
+        platform: Platform | None = None,
+        status: str | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+    ) -> ListDevicesResult:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._inner.list(
+                user_id=user_id,
+                platform=platform,
+                status=status,
+                page=page,
+                page_size=page_size,
+            ),
         )
 
 

@@ -46,6 +46,7 @@ final class SendRequest
         public readonly ?string $clickAction = null,
         public readonly ?string $deepLink = null,
         public readonly ?array $actions = null,
+        public readonly ?string $apnsCategory = null,
         public readonly ?string $scheduledAt = null,
         public readonly ?string $expiresAt = null,
         public readonly ?string $recurrence = null,

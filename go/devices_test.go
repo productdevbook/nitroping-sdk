@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"testing"
 
 	nitroping "github.com/productdevbook/nitroping-sdk/go"
@@ -266,6 +267,214 @@ func TestDevicesDeactivate_EmptyIDReturnsError(t *testing.T) {
 	_, err = client.Devices.Deactivate(context.Background(), "")
 	if err == nil {
 		t.Fatal("expected error on empty device id")
+	}
+}
+
+func TestDevicesList_GetsWithSnakeCaseQueryAndMapsRows(t *testing.T) {
+	var captured struct {
+		method string
+		path   string
+		query  url.Values
+		auth   string
+	}
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		captured.method = r.Method
+		captured.path = r.URL.Path
+		captured.query = r.URL.Query()
+		captured.auth = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[{"id":"dev-1","user_id":"alice","platform":"ios","status":"active","tags":["vip"],"timezone":"Europe/Istanbul","apns_environment":"production","last_seen_at":"2026-06-15T00:00:00Z","inserted_at":"2026-06-14T00:00:00Z"}],"total":1}`))
+	})
+
+	res, err := client.Devices.List(context.Background(), nitroping.ListDevicesQuery{
+		UserID:   "alice",
+		Platform: nitroping.PlatformIOS,
+		PageSize: nitroping.Int(10),
+	})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if captured.method != "GET" {
+		t.Errorf("method = %q, want GET", captured.method)
+	}
+	if captured.path != "/api/v1/devices" {
+		t.Errorf("path = %q, want /api/v1/devices", captured.path)
+	}
+	if captured.auth != "ApiKey np_test_secret" {
+		t.Errorf("Authorization = %q", captured.auth)
+	}
+	if captured.query.Get("user_id") != "alice" {
+		t.Errorf("query user_id = %q, want alice", captured.query.Get("user_id"))
+	}
+	if captured.query.Get("platform") != "ios" {
+		t.Errorf("query platform = %q, want ios", captured.query.Get("platform"))
+	}
+	if captured.query.Get("page_size") != "10" {
+		t.Errorf("query page_size = %q, want 10", captured.query.Get("page_size"))
+	}
+
+	if res.Total != 1 {
+		t.Errorf("Total = %d, want 1", res.Total)
+	}
+	if len(res.Data) != 1 {
+		t.Fatalf("len(Data) = %d, want 1", len(res.Data))
+	}
+	d := res.Data[0]
+	if d.ID != "dev-1" {
+		t.Errorf("Data[0].ID = %q, want dev-1", d.ID)
+	}
+	if d.UserID == nil || *d.UserID != "alice" {
+		t.Errorf("Data[0].UserID = %v, want alice", d.UserID)
+	}
+	if d.Platform != nitroping.PlatformIOS {
+		t.Errorf("Data[0].Platform = %q, want ios", d.Platform)
+	}
+	if d.Status != "active" {
+		t.Errorf("Data[0].Status = %q, want active", d.Status)
+	}
+	if len(d.Tags) != 1 || d.Tags[0] != "vip" {
+		t.Errorf("Data[0].Tags = %v, want [vip]", d.Tags)
+	}
+	if d.Timezone == nil || *d.Timezone != "Europe/Istanbul" {
+		t.Errorf("Data[0].Timezone = %v, want Europe/Istanbul", d.Timezone)
+	}
+	if d.APNsEnvironment == nil || *d.APNsEnvironment != "production" {
+		t.Errorf("Data[0].APNsEnvironment = %v, want production", d.APNsEnvironment)
+	}
+	if d.LastSeenAt == nil || *d.LastSeenAt != "2026-06-15T00:00:00Z" {
+		t.Errorf("Data[0].LastSeenAt = %v", d.LastSeenAt)
+	}
+	if d.InsertedAt != "2026-06-14T00:00:00Z" {
+		t.Errorf("Data[0].InsertedAt = %q", d.InsertedAt)
+	}
+}
+
+func TestDevicesList_NeverExposesToken(t *testing.T) {
+	// The list endpoint never returns the push token; assert the
+	// DeviceSummary type has no field that could surface one, by
+	// round-tripping a body that (hypothetically) included a token and
+	// confirming it is dropped rather than decoded into the struct.
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[{"id":"dev-1","platform":"ios","status":"active","tags":[],"inserted_at":"2026-06-14T00:00:00Z","token":"SHOULD-NOT-APPEAR"}],"total":1}`))
+	})
+
+	res, err := client.Devices.List(context.Background(), nitroping.ListDevicesQuery{})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(res.Data) != 1 {
+		t.Fatalf("len(Data) = %d, want 1", len(res.Data))
+	}
+
+	// Re-marshal the decoded summary and confirm no token leaked through.
+	raw, err := json.Marshal(res.Data[0])
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	var roundTrip map[string]any
+	if err := json.Unmarshal(raw, &roundTrip); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if _, ok := roundTrip["token"]; ok {
+		t.Errorf("DeviceSummary unexpectedly carries a token field: %s", raw)
+	}
+}
+
+func TestDevicesList_EmptyQueryHasNoQueryString(t *testing.T) {
+	var rawQuery string
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		rawQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[],"total":0}`))
+	})
+
+	res, err := client.Devices.List(context.Background(), nitroping.ListDevicesQuery{})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if rawQuery != "" {
+		t.Errorf("RawQuery = %q, want empty", rawQuery)
+	}
+	if res.Total != 0 || len(res.Data) != 0 {
+		t.Errorf("got %+v, want empty listing", res)
+	}
+}
+
+func TestDevicesDeactivateByToken_SendsTokenBody(t *testing.T) {
+	var captured struct {
+		method string
+		path   string
+		ctype  string
+		body   map[string]any
+	}
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		captured.method = r.Method
+		captured.path = r.URL.Path
+		captured.ctype = r.Header.Get("Content-Type")
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured.body)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"id":"dev-9","status":"inactive"}`))
+	})
+
+	result, err := client.Devices.DeactivateByToken(context.Background(), "apns-token-xyz")
+	if err != nil {
+		t.Fatalf("DeactivateByToken: %v", err)
+	}
+	if captured.method != "DELETE" {
+		t.Errorf("method = %q, want DELETE", captured.method)
+	}
+	if captured.path != "/api/v1/devices" {
+		t.Errorf("path = %q, want /api/v1/devices", captured.path)
+	}
+	if captured.ctype != "application/json" {
+		t.Errorf("Content-Type = %q", captured.ctype)
+	}
+	if captured.body["token"] != "apns-token-xyz" {
+		t.Errorf("body.token = %v, want apns-token-xyz", captured.body["token"])
+	}
+	if result.ID != "dev-9" || result.Status != "inactive" {
+		t.Errorf("got %+v, want {dev-9 inactive}", result)
+	}
+}
+
+func TestDevicesDeactivateByToken_404APIError(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":{"code":"not_found","message":"Device not found"}}`))
+	})
+
+	_, err := client.Devices.DeactivateByToken(context.Background(), "nope")
+	if err == nil {
+		t.Fatal("expected APIError")
+	}
+	var apiErr *nitroping.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *APIError, got %T: %v", err, err)
+	}
+	if apiErr.StatusCode != 404 {
+		t.Errorf("StatusCode = %d", apiErr.StatusCode)
+	}
+	if apiErr.Code != "not_found" {
+		t.Errorf("Code = %q", apiErr.Code)
+	}
+}
+
+func TestDevicesDeactivateByToken_EmptyTokenReturnsError(t *testing.T) {
+	client, err := nitroping.NewClient(nitroping.ClientOptions{APIKey: "np_x"})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	_, err = client.Devices.DeactivateByToken(context.Background(), "")
+	if err == nil {
+		t.Fatal("expected error on empty token")
 	}
 }
 

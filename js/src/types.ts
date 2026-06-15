@@ -71,6 +71,12 @@ export interface SendNotificationRequest {
   deepLink?: string
   /** Action buttons (where supported). */
   actions?: NotificationAction[]
+  /**
+   * iOS only. Sets `aps.category` verbatim so an app that registered a
+   * matching `UNNotificationCategory` (e.g. `"order_refund"`) renders the
+   * action buttons. Overrides the server-minted category for this message.
+   */
+  apnsCategory?: string
   /** ISO-8601 timestamp; the row is held until then by the cron worker. */
   scheduledAt?: string
   /** ISO-8601 timestamp; after this the notification is dropped. */
@@ -153,6 +159,39 @@ export interface UpdateDeviceResponse {
   id: string
   /** The device's tags after the update. */
   tags: string[]
+}
+
+/** Query filters for `GET /api/v1/devices` (list). All optional. */
+export interface ListDevicesQuery {
+  /** Only this tenant-side user's devices. */
+  userId?: string
+  /** Filter by platform. */
+  platform?: Platform
+  /** Filter by status. */
+  status?: "active" | "inactive"
+  /** 1-based page number. */
+  page?: number
+  /** Rows per page (server caps at 100). */
+  pageSize?: number
+}
+
+/** One device in a `GET /api/v1/devices` listing. The push token is never returned. */
+export interface DeviceSummary {
+  id: string
+  userId: string | null
+  platform: Platform
+  status: "active" | "inactive"
+  tags: string[]
+  timezone: string | null
+  apnsEnvironment: "sandbox" | "production" | null
+  lastSeenAt: string | null
+  insertedAt: string
+}
+
+/** Response from `GET /api/v1/devices`. */
+export interface ListDevicesResponse {
+  data: DeviceSummary[]
+  total: number
 }
 
 /** Delivery-tracking event type for `POST /api/v1/track`. */

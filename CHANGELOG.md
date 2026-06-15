@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **All server SDKs** (JavaScript/TypeScript, Go, Python, PHP, Kotlin, Swift) — coverage for the new device + notification API surface:
+  - **List devices** — `GET /api/v1/devices` (secret key), filterable by `user_id`, `platform`, `status`, with pagination. Returns the app's devices without ever exposing the push token. (e.g. JS `devices.list({ userId })`)
+  - **Deactivate by token** — `DELETE /api/v1/devices` with a `{ token }` body, for the logout flow where the client knows the provider token but not the device id. (e.g. JS `devices.deactivateByToken(token)`)
+  - **`apnsCategory`** on send-notification — sets `aps.category` verbatim so an iOS app that registered a matching `UNNotificationCategory` renders rich-push action buttons.
+- **React Native** — `deactivateDeviceByToken(token)` on the device client for token-based logout. (List + `apnsCategory` are intentionally not exposed: they are secret-key / server-side surfaces, out of scope for a device-side public-key client.)
+
 ## [0.2.12] — 2026-06-14
 
 ### Fixed

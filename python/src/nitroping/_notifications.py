@@ -54,6 +54,7 @@ class NotificationsClient:
         click_action: str | None = None,
         deep_link: str | None = None,
         actions: list[NotificationAction] | None = None,
+        apns_category: str | None = None,
         scheduled_at: str | None = None,
         expires_at: str | None = None,
         recurrence: str | None = None,
@@ -66,6 +67,11 @@ class NotificationsClient:
 
         Either ``title + body`` (raw payload) or ``template + vars``
         (Pro plan). Mixing the two is a 422.
+
+        ``apns_category`` is iOS only. It sets ``aps.category`` verbatim
+        so an app that registered a matching ``UNNotificationCategory``
+        renders the action buttons. Overrides the server-minted category
+        for this message.
 
         ``recurrence`` (a 5-field cron string) with optional
         ``recurrence_tz`` and ``recurrence_until`` schedules a repeating
@@ -97,6 +103,8 @@ class NotificationsClient:
             wire["deep_link"] = deep_link
         if actions is not None:
             wire["actions"] = actions
+        if apns_category is not None:
+            wire["apns_category"] = apns_category
         if scheduled_at is not None:
             wire["scheduled_at"] = scheduled_at
         if expires_at is not None:

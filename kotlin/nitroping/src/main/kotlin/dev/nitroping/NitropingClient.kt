@@ -85,7 +85,7 @@ public class NitropingClient(
     /** `notifications` resource — `send`, `get`, `cancel`. */
     public val notifications: Notifications = Notifications(transport)
 
-    /** `devices` resource — `register`, `update`, `deactivate`. */
+    /** `devices` resource — `register`, `list`, `update`, `deactivate`, `deactivateByToken`. */
     public val devices: Devices = Devices(transport)
 
     /** `events` resource — `report` (open / click). */

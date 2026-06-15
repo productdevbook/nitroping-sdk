@@ -491,3 +491,50 @@ func TestNotificationsSend_RecurrenceFieldsOmittedWhenUnset(t *testing.T) {
 		}
 	}
 }
+
+func TestNotificationsSend_APNsCategoryMapsToWire(t *testing.T) {
+	var captured map[string]any
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"n1","status":"queued"}`))
+	})
+
+	_, err := client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		Title:        "Refund issued",
+		Body:         "Tap to view",
+		APNsCategory: nitroping.String("order_refund"),
+		Target:       nitroping.AllDevices(),
+	})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if captured["apns_category"] != "order_refund" {
+		t.Errorf("body.apns_category = %v, want order_refund", captured["apns_category"])
+	}
+}
+
+func TestNotificationsSend_APNsCategoryOmittedWhenUnset(t *testing.T) {
+	var captured map[string]any
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &captured)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"n1","status":"queued"}`))
+	})
+
+	_, err := client.Notifications.Send(context.Background(), nitroping.SendRequest{
+		Title:  "x",
+		Body:   "y",
+		Target: nitroping.AllDevices(),
+	})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if _, ok := captured["apns_category"]; ok {
+		t.Errorf("body should not include apns_category when unset")
+	}
+}

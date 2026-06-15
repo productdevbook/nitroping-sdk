@@ -1,8 +1,9 @@
 """``devices`` resource client.
 
 Mounted on :class:`nitroping.Nitroping` as ``np.devices``. Wraps
-``POST /api/v1/devices``, ``PUT /api/v1/devices/:id``, and
-``DELETE /api/v1/devices/:id``.
+``GET /api/v1/devices``, ``POST /api/v1/devices``,
+``PUT /api/v1/devices/:id``, ``DELETE /api/v1/devices/:id``, and
+``DELETE /api/v1/devices`` (deactivate by token).
 """
 
 from __future__ import annotations
@@ -13,6 +14,8 @@ from urllib.parse import quote
 from ._http import HttpClient
 from .types import (
     DeactivateDeviceResult,
+    DeviceSummary,
+    ListDevicesResult,
     Platform,
     RegisterDeviceResult,
     UpdateDeviceResult,
@@ -106,3 +109,71 @@ class DevicesClient:
             "DELETE", f"/api/v1/devices/{quote(device_id, safe='')}"
         )
         return cast(DeactivateDeviceResult, response)
+
+    def deactivate_by_token(self, token: str) -> DeactivateDeviceResult:
+        """Soft-delete a device by its provider token (logout flow).
+
+        Use this when you know the push token but not the device id.
+        Wraps ``DELETE /api/v1/devices`` with a ``{"token": ...}`` body
+        (no id in the path). Returns ``{"id": ..., "status":
+        "inactive"}``. Raises :class:`~nitroping.errors.ApiError` with
+        ``code = "not_found"`` when no device with that token belongs to
+        your app.
+        """
+        response = self._http.request(
+            "DELETE", "/api/v1/devices", body={"token": token}
+        )
+        return cast(DeactivateDeviceResult, response)
+
+    # Defined last so the method name ``list`` does not shadow the
+    # builtin ``list`` in the ``list[str]`` annotations above (the
+    # ``from __future__ import annotations`` strings are resolved in the
+    # class namespace, where this method is bound).
+    def list(
+        self,
+        *,
+        user_id: str | None = None,
+        platform: Platform | None = None,
+        status: str | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+    ) -> ListDevicesResult:
+        """List devices (secret API key only).
+
+        Wraps ``GET /api/v1/devices``. Pass ``user_id`` to fetch one
+        end-user's registered devices, or filter by ``platform`` /
+        ``status``; ``page`` / ``page_size`` paginate (server caps
+        ``page_size`` at 100). Returns ``{"data": [...], "total": <int>}``.
+
+        The push token is **never** returned — each row in ``data`` is a
+        :class:`~nitroping.types.DeviceSummary` with no token field.
+        """
+        params: dict[str, Any] = {
+            "user_id": user_id,
+            "platform": platform,
+            "status": status,
+            "page": page,
+            "page_size": page_size,
+        }
+        response = self._http.request("GET", "/api/v1/devices", params=params)
+        raw = cast("dict[str, Any]", response)
+        return {
+            "data": [
+                cast(
+                    DeviceSummary,
+                    {
+                        "id": d["id"],
+                        "user_id": d["user_id"],
+                        "platform": d["platform"],
+                        "status": d["status"],
+                        "tags": d["tags"],
+                        "timezone": d["timezone"],
+                        "apns_environment": d["apns_environment"],
+                        "last_seen_at": d["last_seen_at"],
+                        "inserted_at": d["inserted_at"],
+                    },
+                )
+                for d in raw["data"]
+            ],
+            "total": raw["total"],
+        }

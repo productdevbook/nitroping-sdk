@@ -162,6 +162,11 @@ public struct CreateNotification: Encodable, Sendable {
     /// Notification image URL.
     public let image: String?
     public let actions: [NitropingAction]?
+    /// iOS only. Sets `aps.category` verbatim so an app that registered a
+    /// matching `UNNotificationCategory` (e.g. `"order_refund"`) renders the
+    /// action buttons. Overrides the server-minted category for this message.
+    /// Wire key `apns_category`.
+    public let apnsCategory: String?
     public let data: [String: String]?
     public let scheduledAt: Date?
     /// After this instant the notification is dropped rather than sent.
@@ -189,6 +194,7 @@ public struct CreateNotification: Encodable, Sendable {
         icon: String? = nil,
         image: String? = nil,
         actions: [NitropingAction]? = nil,
+        apnsCategory: String? = nil,
         data: [String: String]? = nil,
         scheduledAt: Date? = nil,
         expiresAt: Date? = nil,
@@ -207,6 +213,7 @@ public struct CreateNotification: Encodable, Sendable {
         self.icon = icon
         self.image = image
         self.actions = actions
+        self.apnsCategory = apnsCategory
         self.data = data
         self.scheduledAt = scheduledAt
         self.expiresAt = expiresAt
@@ -227,6 +234,7 @@ public struct CreateNotification: Encodable, Sendable {
         case icon
         case image
         case actions
+        case apnsCategory = "apns_category"
         case data
         case scheduledAt = "scheduled_at"
         case expiresAt = "expires_at"

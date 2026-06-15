@@ -183,4 +183,145 @@ final class DevicesServiceTest extends TestCase
             self::assertSame(404, $e->status);
         }
     }
+
+    public function testListGetsDevicesWithSnakeCaseQueryAndCamelCasesRows(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue([
+            'data' => [
+                [
+                    'id' => 'dev-1',
+                    'user_id' => 'alice',
+                    'platform' => 'ios',
+                    'status' => 'active',
+                    'tags' => ['vip'],
+                    'timezone' => 'Europe/Istanbul',
+                    'apns_environment' => 'production',
+                    'last_seen_at' => '2026-06-15T00:00:00Z',
+                    'inserted_at' => '2026-06-14T00:00:00Z',
+                ],
+            ],
+            'total' => 1,
+        ]);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+        $res = $np->devices->list(
+            userId: 'alice',
+            platform: 'ios',
+            pageSize: 10,
+        );
+
+        self::assertSame(1, $res['total']);
+        self::assertSame([
+            'id' => 'dev-1',
+            'userId' => 'alice',
+            'platform' => 'ios',
+            'status' => 'active',
+            'tags' => ['vip'],
+            'timezone' => 'Europe/Istanbul',
+            'apnsEnvironment' => 'production',
+            'lastSeenAt' => '2026-06-15T00:00:00Z',
+            'insertedAt' => '2026-06-14T00:00:00Z',
+        ], $res['data'][0]);
+
+        $call = $mock->calls[0];
+        self::assertSame('GET', $call['method']);
+        self::assertNull($call['body']);
+        self::assertStringStartsWith('/api/v1/devices?', $call['path']);
+        self::assertStringContainsString('user_id=alice', $call['path']);
+        self::assertStringContainsString('platform=ios', $call['path']);
+        self::assertStringContainsString('page_size=10', $call['path']);
+    }
+
+    public function testListNeverExposesPushToken(): void
+    {
+        $mock = new MockTransport();
+        // Even if the server were to (incorrectly) leak a token, the SDK's
+        // mapping projects a fixed key set that has no `token` field.
+        $mock->enqueue([
+            'data' => [
+                [
+                    'id' => 'dev-1',
+                    'user_id' => null,
+                    'platform' => 'android',
+                    'status' => 'active',
+                    'tags' => [],
+                    'timezone' => null,
+                    'apns_environment' => null,
+                    'last_seen_at' => null,
+                    'inserted_at' => '2026-06-14T00:00:00Z',
+                    'token' => 'should-never-surface',
+                ],
+            ],
+            'total' => 1,
+        ]);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+        $res = $np->devices->list();
+
+        self::assertArrayNotHasKey('token', $res['data'][0]);
+        self::assertSame([
+            'id',
+            'userId',
+            'platform',
+            'status',
+            'tags',
+            'timezone',
+            'apnsEnvironment',
+            'lastSeenAt',
+            'insertedAt',
+        ], array_keys($res['data'][0]));
+    }
+
+    public function testListWithNoFiltersSendsBarePathAndHandlesEmptyListing(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['data' => [], 'total' => 0]);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+        $res = $np->devices->list();
+
+        self::assertSame(['data' => [], 'total' => 0], $res);
+
+        $call = $mock->calls[0];
+        self::assertSame('GET', $call['method']);
+        self::assertSame('/api/v1/devices', $call['path']);
+        self::assertNull($call['body']);
+    }
+
+    public function testDeactivateByTokenSendsDeleteWithTokenBody(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueue(['id' => 'dev-9', 'status' => 'inactive']);
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+        $result = $np->devices->deactivateByToken('apns-token-xyz');
+
+        self::assertSame(['id' => 'dev-9', 'status' => 'inactive'], $result);
+
+        $call = $mock->calls[0];
+        self::assertSame('DELETE', $call['method']);
+        self::assertSame('/api/v1/devices', $call['path']);
+        self::assertSame(['token' => 'apns-token-xyz'], $call['body']);
+    }
+
+    public function testDeactivateByTokenThrowsNotFoundOn404(): void
+    {
+        $mock = new MockTransport();
+        $mock->enqueueError(new ApiException(
+            status: 404,
+            code: 'not_found',
+            message: 'Device not found',
+        ));
+
+        $np = new Nitroping(apiKey: 'np_x', transport: $mock);
+
+        try {
+            $np->devices->deactivateByToken('nope');
+            self::fail('Expected ApiException');
+        } catch (ApiException $e) {
+            self::assertSame('not_found', $e->errorCode);
+            self::assertSame(404, $e->status);
+        }
+    }
 }

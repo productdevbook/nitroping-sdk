@@ -127,3 +127,87 @@ public struct DeviceDeleteResponse: Codable, Equatable, Sendable {
     /// historical delivery rows still resolve.
     public let status: String
 }
+
+/// A device's lifecycle status. `.active` devices receive pushes;
+/// `.inactive` ones have been soft-deleted (by token or id) but stay around
+/// so historical delivery rows still resolve.
+public enum DeviceStatus: String, Codable, Sendable, CaseIterable {
+    case active
+    case inactive
+}
+
+/// Query filters for `GET /api/v1/devices` (list). Every field is optional;
+/// the default (`.init()`) lists the first page of all devices.
+public struct ListDevicesQuery: Equatable, Sendable {
+    /// Only this tenant-side user's devices.
+    public let userId: String?
+    /// Filter by platform.
+    public let platform: DevicePlatform?
+    /// Filter by lifecycle status.
+    public let status: DeviceStatus?
+    /// 1-based page number.
+    public let page: Int?
+    /// Rows per page (server caps at 100).
+    public let pageSize: Int?
+
+    public init(
+        userId: String? = nil,
+        platform: DevicePlatform? = nil,
+        status: DeviceStatus? = nil,
+        page: Int? = nil,
+        pageSize: Int? = nil
+    ) {
+        self.userId = userId
+        self.platform = platform
+        self.status = status
+        self.page = page
+        self.pageSize = pageSize
+    }
+}
+
+/// One device in a `GET /api/v1/devices` listing.
+///
+/// The provider push **token is never returned** by this endpoint — there's
+/// no `token` field on this type by design.
+public struct DeviceSummary: Codable, Equatable, Sendable {
+    /// Server-assigned device id (`dev_...`).
+    public let id: String
+    /// Opaque tenant-side user id this device is bound to, if any.
+    public let userId: String?
+    /// Platform this device is registered on.
+    public let platform: DevicePlatform
+    /// Lifecycle status.
+    public let status: DeviceStatus
+    /// Segmentation labels attached to the device.
+    public let tags: [String]
+    /// IANA timezone reported at registration, or `nil`.
+    public let timezone: String?
+    /// APNs environment for an iOS token (`.sandbox` / `.production`), or
+    /// `nil` for non-iOS devices.
+    public let apnsEnvironment: APNSEnvironment?
+    /// ISO-8601 timestamp the device was last seen, or `nil`.
+    public let lastSeenAt: String?
+    /// ISO-8601 timestamp the device row was created.
+    public let insertedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case platform
+        case status
+        case tags
+        case timezone
+        case apnsEnvironment = "apns_environment"
+        case lastSeenAt = "last_seen_at"
+        case insertedAt = "inserted_at"
+    }
+}
+
+/// Response body for `GET /api/v1/devices`. `data` is the page of devices;
+/// `total` is the unpaged match count.
+public struct ListDevicesResponse: Codable, Equatable, Sendable {
+    /// The page of devices.
+    public let data: [DeviceSummary]
+    /// Total number of devices matching the query, ignoring pagination.
+    public let total: Int
+}
