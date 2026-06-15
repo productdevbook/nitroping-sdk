@@ -90,6 +90,7 @@ public class Notifications internal constructor(private val transport: HttpTrans
                 m
             }
         }
+        input.apnsCategory?.let { wire["apns_category"] = it }
         input.scheduledAt?.let { wire["scheduled_at"] = it }
         input.expiresAt?.let { wire["expires_at"] = it }
         input.recurrence?.let { wire["recurrence"] = it }

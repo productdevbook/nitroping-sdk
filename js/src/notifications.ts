@@ -80,6 +80,7 @@ function toWire(input: SendNotificationRequest): Record<string, unknown> {
   if (input.clickAction !== undefined) wire["click_action"] = input.clickAction
   if (input.deepLink !== undefined) wire["deep_link"] = input.deepLink
   if (input.actions !== undefined) wire["actions"] = input.actions
+  if (input.apnsCategory !== undefined) wire["apns_category"] = input.apnsCategory
   if (input.scheduledAt !== undefined) wire["scheduled_at"] = input.scheduledAt
   if (input.expiresAt !== undefined) wire["expires_at"] = input.expiresAt
   if (input.recurrence !== undefined) wire["recurrence"] = input.recurrence

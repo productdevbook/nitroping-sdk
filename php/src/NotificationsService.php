@@ -36,6 +36,10 @@ final class NotificationsService
      *
      * `actions` is a list of `['id' => string, 'title' => string, 'icon' => ?string]`.
      *
+     * `apnsCategory` is iOS only. It sets `aps.category` verbatim so an app
+     * that registered a matching `UNNotificationCategory` renders the action
+     * buttons. Overrides the server-minted category for this message.
+     *
      * Pass `idempotencyKey` to make retries safe: the server replays the
      * cached response for the same key + body for 24 hours. Same key
      * with a different body yields a 409 (`idempotency_conflict`).
@@ -73,6 +77,7 @@ final class NotificationsService
         ?string $clickAction = null,
         ?string $deepLink = null,
         ?array $actions = null,
+        ?string $apnsCategory = null,
         ?string $scheduledAt = null,
         ?string $expiresAt = null,
         ?string $recurrence = null,
@@ -93,6 +98,7 @@ final class NotificationsService
             clickAction: $clickAction,
             deepLink: $deepLink,
             actions: $actions,
+            apnsCategory: $apnsCategory,
             scheduledAt: $scheduledAt,
             expiresAt: $expiresAt,
             recurrence: $recurrence,
@@ -133,6 +139,7 @@ final class NotificationsService
             clickAction: $req->clickAction,
             deepLink: $req->deepLink,
             actions: $req->actions,
+            apnsCategory: $req->apnsCategory,
             scheduledAt: $req->scheduledAt,
             expiresAt: $req->expiresAt,
             recurrence: $req->recurrence,
@@ -205,6 +212,7 @@ final class NotificationsService
         ?string $clickAction,
         ?string $deepLink,
         ?array $actions,
+        ?string $apnsCategory,
         ?string $scheduledAt,
         ?string $expiresAt,
         ?string $recurrence,
@@ -242,6 +250,9 @@ final class NotificationsService
         }
         if ($actions !== null) {
             $wire['actions'] = $actions;
+        }
+        if ($apnsCategory !== null) {
+            $wire['apns_category'] = $apnsCategory;
         }
         if ($scheduledAt !== null) {
             $wire['scheduled_at'] = $scheduledAt;

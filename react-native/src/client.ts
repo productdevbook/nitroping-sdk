@@ -84,6 +84,7 @@ export interface ReportEventInput {
 }
 
 export class NitropingDevice {
+  private readonly http: HttpClient;
   private readonly devices: DevicesClient;
   private readonly events: EventsClient;
 
@@ -103,6 +104,7 @@ export class NitropingDevice {
       debug: options.debug,
       authScheme: options.publicKey.startsWith("pk_") ? "Public" : "ApiKey",
     });
+    this.http = http;
     this.devices = new DevicesClient(http);
     this.events = new EventsClient(http);
   }
@@ -128,9 +130,22 @@ export class NitropingDevice {
     });
   }
 
-  /** Deactivate a device (e.g. on logout). */
+  /** Deactivate a device by its id (e.g. on logout). */
   async deactivateDevice(id: string): Promise<{ id: string; status: string }> {
     return await this.devices.deactivate(id);
+  }
+
+  /**
+   * Deactivate this device by its push token (logout flow). Use this when
+   * you hold the APNs/FCM token but never persisted the device id returned
+   * by {@link NitropingDevice.registerDevice}. Wraps `DELETE /api/v1/devices`
+   * with a `{ token }` body.
+   *
+   * Returns `{ id, status: "inactive" }`. Throws a `NitropingError` with
+   * `code: "not_found"` when no device with that token belongs to your app.
+   */
+  async deactivateDeviceByToken(token: string): Promise<{ id: string; status: string }> {
+    return await this.http.request("DELETE", "/api/v1/devices", { body: { token } });
   }
 
   /**

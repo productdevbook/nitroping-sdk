@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"strconv"
 )
 
 // DevicesService wraps the /api/v1/devices endpoints. Construct one
@@ -37,6 +38,51 @@ func (s *DevicesService) Register(
 	}
 	var out DeviceResult
 	if err := s.transport.do(ctx, "POST", path, req, cfg, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// List lists devices via GET /api/v1/devices (secret key only). The
+// optional query filters by user id, platform, status, and paginates.
+// The push token is never returned — each row is a DeviceSummary with
+// no token field. On success the result is {Data, Total}.
+//
+//	res, err := client.Devices.List(ctx, nitroping.ListDevicesQuery{
+//	    UserID:   "user-42",
+//	    Platform: nitroping.PlatformIOS,
+//	})
+func (s *DevicesService) List(
+	ctx context.Context,
+	query ListDevicesQuery,
+	opts ...RequestOption,
+) (*ListDevicesResult, error) {
+	cfg := applyOptions(opts)
+
+	q := url.Values{}
+	if query.UserID != "" {
+		q.Set("user_id", query.UserID)
+	}
+	if query.Platform != "" {
+		q.Set("platform", string(query.Platform))
+	}
+	if query.Status != "" {
+		q.Set("status", query.Status)
+	}
+	if query.Page != nil {
+		q.Set("page", strconv.Itoa(*query.Page))
+	}
+	if query.PageSize != nil {
+		q.Set("page_size", strconv.Itoa(*query.PageSize))
+	}
+
+	path := "/api/v1/devices"
+	if encoded := q.Encode(); encoded != "" {
+		path += "?" + encoded
+	}
+
+	var out ListDevicesResult
+	if err := s.transport.do(ctx, "GET", path, nil, cfg, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -85,6 +131,32 @@ func (s *DevicesService) Deactivate(
 	var out DeactivateResult
 	path := "/api/v1/devices/" + url.PathEscape(id)
 	if err := s.transport.do(ctx, "DELETE", path, nil, cfg, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// DeactivateByToken soft-deletes a device by its provider token rather
+// than its id (the logout flow: you hold the push token but not the
+// device id). It sends DELETE /api/v1/devices with a {"token": ...}
+// body. Returns *APIError with Code="not_found" if no device with that
+// token belongs to the caller's app.
+//
+// This is the sibling of Deactivate, which deletes by id.
+func (s *DevicesService) DeactivateByToken(
+	ctx context.Context,
+	token string,
+	opts ...RequestOption,
+) (*DeactivateResult, error) {
+	if token == "" {
+		return nil, errors.New("nitroping: device token is required")
+	}
+	cfg := applyOptions(opts)
+	body := struct {
+		Token string `json:"token"`
+	}{Token: token}
+	var out DeactivateResult
+	if err := s.transport.do(ctx, "DELETE", "/api/v1/devices", body, cfg, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

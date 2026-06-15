@@ -169,4 +169,25 @@ describe("NitropingDevice", () => {
     expect(init.method).toBe("DELETE");
     expect(url).toBe("https://nitroping.dev/api/v1/devices/dev-1");
   });
+
+  it("deactivates a device by token via a { token } body", async () => {
+    const spy = mockFetch(() => json({ id: "dev-9", status: "inactive" }));
+    const device = new NitropingDevice({ publicKey: "pk_test" });
+
+    const res = await device.deactivateDeviceByToken("apns-token-xyz");
+    expect(res).toEqual({ id: "dev-9", status: "inactive" });
+    const [url, init] = spy.mock.calls[0]! as [string, RequestInit];
+    expect(url).toBe("https://nitroping.dev/api/v1/devices");
+    expect(init.method).toBe("DELETE");
+    expect(JSON.parse(init.body as string)).toEqual({ token: "apns-token-xyz" });
+  });
+
+  it("throws not_found when deactivating by an unknown token", async () => {
+    mockFetch(() => json({ error: { code: "not_found", message: "Device not found" } }, 404));
+    const device = new NitropingDevice({ publicKey: "pk_test" });
+
+    await expect(device.deactivateDeviceByToken("nope")).rejects.toMatchObject({
+      code: "not_found",
+    });
+  });
 });

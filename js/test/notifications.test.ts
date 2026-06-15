@@ -91,6 +91,29 @@ describe("notifications.send", () => {
     })
   })
 
+  it("maps apnsCategory to apns_category on the wire", async () => {
+    const spy = mockFetch(
+      () =>
+        new Response(JSON.stringify({ id: "n-cat", status: "queued" }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+    )
+
+    const np = new Nitroping({ apiKey: "np_x" })
+    await np.notifications.send({
+      title: "Refund",
+      body: "Approve?",
+      actions: [{ id: "approve", title: "Approve" }],
+      apnsCategory: "order_refund",
+      target: { all: true },
+    })
+
+    const body = JSON.parse(spy.mock.calls[0]![1]!.body as string)
+    expect(body.apns_category).toBe("order_refund")
+    expect("apnsCategory" in body).toBe(false)
+  })
+
   it("forwards Idempotency-Key header when provided", async () => {
     const spy = mockFetch(
       () =>

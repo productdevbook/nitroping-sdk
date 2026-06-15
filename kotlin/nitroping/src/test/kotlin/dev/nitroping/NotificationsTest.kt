@@ -56,6 +56,34 @@ class NotificationsTest {
         assertEquals(mapOf("all" to true), body["target"])
     }
 
+    @Test fun `serializes apnsCategory as snake_case apns_category`() = runTest {
+        stub.enqueue(status = 201, body = """{"id":"n1","status":"queued"}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        client.notifications.send(
+            SendRequest(
+                title = "Refund issued",
+                body = "Tap to review",
+                apnsCategory = "order_refund",
+                target = Target.All,
+            ),
+        )
+
+        val body = Json.decode(stub.received.single().body) as Map<*, *>
+        assertEquals("order_refund", body["apns_category"])
+        assertTrue("apnsCategory" !in body)
+    }
+
+    @Test fun `omits apns_category when not provided`() = runTest {
+        stub.enqueue(status = 201, body = """{"id":"n1","status":"queued"}""")
+
+        val client = NitropingClient(apiKey = "np_x", baseUrl = stub.baseUrl)
+        client.notifications.send(SendRequest(title = "x", body = "y", target = Target.All))
+
+        val body = Json.decode(stub.received.single().body) as Map<*, *>
+        assertTrue("apns_category" !in body)
+    }
+
     @Test fun `forwards Idempotency-Key header when provided`() = runTest {
         stub.enqueue(status = 201, body = """{"id":"n1","status":"queued"}""")
 

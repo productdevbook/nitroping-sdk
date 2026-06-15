@@ -236,8 +236,17 @@ Returns `{ reportOpened(notificationId, deviceId), reportClicked(notificationId,
 ### `useNitroping()`
 
 Returns the underlying `NitropingDevice` for imperative use
-(`registerDevice`, `deactivateDevice`, `reportEvent`). Throws if used outside a
-provider.
+(`registerDevice`, `deactivateDevice`, `deactivateDeviceByToken`,
+`reportEvent`). Throws if used outside a provider.
+
+On logout, deactivate the device so it stops receiving pushes. Use
+`deactivateDevice(id)` if you kept the id from `registerDevice`, or
+`deactivateDeviceByToken(token)` when you only have the APNs/FCM token:
+
+```tsx
+const np = useNitroping();
+await np.deactivateDeviceByToken(fcmToken); // { id, status: "inactive" }
+```
 
 ### `new NitropingDevice({ publicKey, baseUrl?, timeoutMs?, fetch? })`
 

@@ -1,17 +1,37 @@
 /**
  * `devices` resource client.
  *
- * Mounted on `Nitroping` as `np.devices`. Wraps `POST /api/v1/devices`,
- * `PUT /api/v1/devices/:id`, and `DELETE /api/v1/devices/:id`.
+ * Mounted on `Nitroping` as `np.devices`. Wraps `GET /api/v1/devices`,
+ * `POST /api/v1/devices`, `PUT /api/v1/devices/:id`, `DELETE
+ * /api/v1/devices/:id`, and `DELETE /api/v1/devices` (by token).
  */
 
 import type { HttpClient } from "./http"
 import type {
+  ListDevicesQuery,
+  ListDevicesResponse,
   RegisterDeviceRequest,
   RegisterDeviceResponse,
   UpdateDeviceRequest,
   UpdateDeviceResponse,
 } from "./types"
+
+interface RawDeviceSummary {
+  id: string
+  user_id: string | null
+  platform: RegisterDeviceRequest["platform"]
+  status: "active" | "inactive"
+  tags: string[]
+  timezone: string | null
+  apns_environment: "sandbox" | "production" | null
+  last_seen_at: string | null
+  inserted_at: string
+}
+
+interface RawListDevicesResponse {
+  data: RawDeviceSummary[]
+  total: number
+}
 
 export class DevicesClient {
   constructor(private readonly http: HttpClient) {}
@@ -31,6 +51,41 @@ export class DevicesClient {
     return await this.http.request<RegisterDeviceResponse>("POST", path, {
       body: toWire(input),
     })
+  }
+
+  /**
+   * List devices (secret key only). Wraps `GET /api/v1/devices`.
+   *
+   * Pass `userId` to fetch one end-user's registered devices. The push
+   * token is never returned. Returns `{ data, total }`.
+   */
+  async list(query: ListDevicesQuery = {}): Promise<ListDevicesResponse> {
+    const wire: Record<string, string | number | undefined> = {
+      user_id: query.userId,
+      platform: query.platform,
+      status: query.status,
+      page: query.page,
+      page_size: query.pageSize,
+    }
+
+    const raw = await this.http.request<RawListDevicesResponse>("GET", "/api/v1/devices", {
+      query: wire,
+    })
+
+    return {
+      total: raw.total,
+      data: raw.data.map((d) => ({
+        id: d.id,
+        userId: d.user_id,
+        platform: d.platform,
+        status: d.status,
+        tags: d.tags,
+        timezone: d.timezone,
+        apnsEnvironment: d.apns_environment,
+        lastSeenAt: d.last_seen_at,
+        insertedAt: d.inserted_at,
+      })),
+    }
   }
 
   /**
@@ -57,6 +112,18 @@ export class DevicesClient {
    */
   async deactivate(id: string): Promise<{ id: string; status: string }> {
     return await this.http.request("DELETE", `/api/v1/devices/${encodeURIComponent(id)}`)
+  }
+
+  /**
+   * Deactivate a device by its provider token (logout flow — you know the
+   * token but not the device id). Wraps `DELETE /api/v1/devices` with a
+   * `{ token }` body.
+   *
+   * Returns `{ id, status: "inactive" }`. Throws a `NitropingError` with
+   * `code: "not_found"` when no device with that token belongs to your app.
+   */
+  async deactivateByToken(token: string): Promise<{ id: string; status: string }> {
+    return await this.http.request("DELETE", "/api/v1/devices", { body: { token } })
   }
 }
 
